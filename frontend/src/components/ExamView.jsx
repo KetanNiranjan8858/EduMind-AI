@@ -38,8 +38,6 @@ export default function ExamView({ quiz, onSubmitExam, onExit }) {
 
   const questions = quiz.questions;
   const totalQuestions = questions.length;
-  // Dual-Timer 1: Total paper countdown starts at 60s per question
-  const initialTotalSeconds = totalQuestions * 60;
 
   // Restore or initialize state from localStorage
   const examStorageKey = `edumind_cbt_session_${quiz.generatedAt || 'active'}`;
@@ -55,7 +53,6 @@ export default function ExamView({ quiz, onSubmitExam, onExit }) {
     return initialStatus;
   });
 
-  const [totalTimeRemaining, setTotalTimeRemaining] = useState(initialTotalSeconds);
   const [questionTimes, setQuestionTimes] = useState({});
   const [showSubmitModal, setShowSubmitModal] = useState(false);
 
@@ -72,7 +69,6 @@ export default function ExamView({ quiz, onSubmitExam, onExit }) {
         if (parsed.userAnswers) setUserAnswers(parsed.userAnswers);
         if (parsed.questionStatus) setQuestionStatus(parsed.questionStatus);
         if (parsed.questionTimes) setQuestionTimes(parsed.questionTimes);
-        if (parsed.totalTimeRemaining !== undefined) setTotalTimeRemaining(parsed.totalTimeRemaining);
         if (parsed.currentIndex !== undefined) setCurrentIndex(parsed.currentIndex);
       }
     } catch (e) {
@@ -89,37 +85,15 @@ export default function ExamView({ quiz, onSubmitExam, onExit }) {
           userAnswers,
           questionStatus,
           questionTimes,
-          totalTimeRemaining,
           currentIndex
         })
       );
     } catch (e) {
       // quota or local storage restriction
     }
-  }, [userAnswers, questionStatus, questionTimes, totalTimeRemaining, currentIndex, examStorageKey]);
+  }, [userAnswers, questionStatus, questionTimes, currentIndex, examStorageKey]);
 
-  // Dual-Timer 1: Total paper countdown
-  useEffect(() => {
-    if (totalTimeRemaining <= 0) {
-      handleFinalSubmit();
-      return;
-    }
-
-    const interval = setInterval(() => {
-      setTotalTimeRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          handleFinalSubmit();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [totalTimeRemaining]);
-
-  // Dual-Timer 2: Per-question active time counter (silently counts seconds)
+  // Per-question active time counter (tracks time spent on current question)
   useEffect(() => {
     const timer = setInterval(() => {
       setQuestionTimes((prev) => ({
@@ -198,11 +172,12 @@ export default function ExamView({ quiz, onSubmitExam, onExit }) {
   function handleFinalSubmit() {
     // Clear in-flight CBT session from localStorage
     localStorage.removeItem(examStorageKey);
+    const totalSpent = Object.values(questionTimes).reduce((acc, curr) => acc + (Number(curr) || 0), 0);
     onSubmitExam({
       quiz,
       userAnswers,
       questionTimes,
-      timeTakenSeconds: initialTotalSeconds - totalTimeRemaining
+      timeTakenSeconds: totalSpent
     });
   }
 
@@ -224,16 +199,13 @@ export default function ExamView({ quiz, onSubmitExam, onExit }) {
     }
   });
 
-  const isLowTime = totalTimeRemaining < 120; // under 2 minutes
-  const isCriticalTime = totalTimeRemaining < 30; // under 30 seconds
-
   return (
     <div className="min-h-screen bg-dark-950 text-slate-100 flex flex-col select-none">
-      {/* Top Professional CBT Header (TCS / GATE Style) */}
+      {/* Top Professional CBT Header */}
       <header className="h-16 bg-dark-900 border-b border-slate-800 px-6 flex items-center justify-between shrink-0 shadow-md">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="p-2 bg-rose-500/10 text-rose-400 rounded-lg border border-rose-500/20">
+            <div className="p-2 bg-brand-500/10 text-brand-400 rounded-lg border border-brand-500/20">
               <Award className="w-5 h-5" />
             </div>
             <div>
@@ -250,25 +222,17 @@ export default function ExamView({ quiz, onSubmitExam, onExit }) {
           </div>
         </div>
 
-        {/* Dual Timer 1 & Submit */}
+        {/* Time Spent on Question & Submit */}
         <div className="flex items-center gap-6">
-          {/* Dual-Timer: Total Countdown */}
-          <div
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl border font-mono transition-all ${
-              isCriticalTime
-                ? 'bg-rose-500/20 border-rose-500 text-rose-400 animate-pulse font-bold'
-                : isLowTime
-                ? 'bg-amber-500/10 border-amber-500/40 text-amber-300'
-                : 'bg-dark-950 border-slate-800 text-brand-300'
-            }`}
-          >
-            <Clock className="w-4 h-4" />
+          {/* Active Time Tracker Per Question */}
+          <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 font-mono text-cyan-300 shadow-sm">
+            <Clock className="w-4 h-4 text-cyan-400 animate-pulse" />
             <div className="text-right">
               <span className="text-xs text-slate-400 uppercase mr-1.5 font-sans font-medium">
-                Time Remaining:
+                Time on Q{currentIndex + 1}:
               </span>
-              <span className="text-base font-bold tracking-wider">
-                {formatTime(totalTimeRemaining)}
+              <span className="text-base font-bold tracking-wider text-cyan-200">
+                {formatTime(questionTimes[activeQuestionId] || 0)}
               </span>
             </div>
           </div>
@@ -492,7 +456,7 @@ export default function ExamView({ quiz, onSubmitExam, onExit }) {
           {/* Quick instructions footer */}
           <div className="p-4 border-t border-slate-800 bg-dark-950/60 text-[11px] text-slate-500">
             <p>
-              Auto-submission triggers immediately when the total countdown expires. Answers are continuously synced to cross-tab storage.
+              Active time spent per question is tracked in real-time. Answers are continuously saved and synced across sessions.
             </p>
           </div>
         </aside>

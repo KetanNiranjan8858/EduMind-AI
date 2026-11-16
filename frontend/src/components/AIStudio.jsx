@@ -130,7 +130,7 @@ export default function AIStudio({
               Number of Questions
             </label>
             <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-brand-500/10 text-brand-300 border border-brand-500/20">
-              {questionCount} Qs ({questionCount} min paper)
+              {questionCount} Questions
             </span>
           </div>
           <input

@@ -8,7 +8,8 @@ import {
   Trash2,
   Check,
   RotateCcw,
-  Sparkles
+  Sparkles,
+  Pin
 } from 'lucide-react';
 
 import SourcePanel from './components/SourcePanel';
@@ -55,6 +56,27 @@ export default function App() {
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const dropdownRef = useRef(null);
+
+  // Pinned Workspaces
+  const [pinnedIds, setPinnedIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('edumind_pinned_workspaces');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  function handleTogglePin(wsId, e) {
+    e.stopPropagation();
+    setPinnedIds((prev) => {
+      const next = prev.includes(wsId) ? prev.filter((id) => id !== wsId) : [...prev, wsId];
+      try {
+        localStorage.setItem('edumind_pinned_workspaces', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }
 
   // Active Workspace Data
   const [sources, setSources] = useState([]);
@@ -461,50 +483,79 @@ export default function App() {
             >
               <span className={`w-2 h-2 rounded-full ${getWorkspaceColorDot(activeWorkspace.color)}`} />
               <span className="max-w-[150px] sm:max-w-[200px] truncate">{activeWorkspace.name}</span>
+              {pinnedIds.includes(activeWorkspace.id) && (
+                <Pin className="w-3 h-3 text-amber-400 fill-amber-400 rotate-45 shrink-0" title="Pinned" />
+              )}
               <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
             </button>
 
             {/* Dropdown Menu */}
             {isWorkspaceDropdownOpen && (
               <div className="absolute right-0 mt-2 w-72 bg-dark-900 border border-slate-700/80 rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
-                <div className="px-3.5 py-1.5 border-b border-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Select Workspace
+                <div className="px-3.5 py-1.5 border-b border-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                  <span>Workspaces</span>
+                  <span className="text-[9px] text-slate-500 font-normal">Click pin to prioritize</span>
                 </div>
 
                 <div className="max-h-60 overflow-y-auto py-1">
-                  {workspaces.map((ws) => {
-                    const isSelected = ws.id === activeWorkspaceId;
-                    return (
-                      <div
-                        key={ws.id}
-                        onClick={() => {
-                          setActiveWorkspaceId(ws.id);
-                          setIsWorkspaceDropdownOpen(false);
-                        }}
-                        className={`group px-3 py-2 text-xs flex items-center justify-between cursor-pointer transition-colors ${
-                          isSelected ? 'bg-brand-500/15 text-white font-semibold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 truncate">
-                          <span className={`w-2 h-2 rounded-full shrink-0 ${getWorkspaceColorDot(ws.color)}`} />
-                          <span className="truncate">{ws.name}</span>
-                        </div>
+                  {[...workspaces]
+                    .sort((a, b) => {
+                      const aPin = pinnedIds.includes(a.id);
+                      const bPin = pinnedIds.includes(b.id);
+                      if (aPin && !bPin) return -1;
+                      if (!aPin && bPin) return 1;
+                      return 0;
+                    })
+                    .map((ws) => {
+                      const isSelected = ws.id === activeWorkspaceId;
+                      const isPinned = pinnedIds.includes(ws.id);
+                      return (
+                        <div
+                          key={ws.id}
+                          onClick={() => {
+                            setActiveWorkspaceId(ws.id);
+                            setIsWorkspaceDropdownOpen(false);
+                          }}
+                          className={`group px-3 py-2 text-xs flex items-center justify-between cursor-pointer transition-colors ${
+                            isSelected ? 'bg-brand-500/15 text-white font-semibold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${getWorkspaceColorDot(ws.color)}`} />
+                            <span className="truncate">{ws.name}</span>
+                          </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {isSelected && <Check className="w-3.5 h-3.5 text-brand-400" />}
-                          {ws.id !== 'ws_default' && (
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {/* Pin / Unpin Button */}
                             <button
-                              onClick={(e) => handleDeleteWorkspace(ws.id, e)}
-                              className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-rose-400 rounded transition-opacity"
-                              title="Delete workspace"
+                              type="button"
+                              onClick={(e) => handleTogglePin(ws.id, e)}
+                              className={`p-1 rounded transition-colors ${
+                                isPinned
+                                  ? 'text-amber-400 hover:text-amber-300'
+                                  : 'text-slate-500 hover:text-slate-300 opacity-40 group-hover:opacity-100'
+                              }`}
+                              title={isPinned ? 'Unpin workspace' : 'Pin workspace to top'}
                             >
-                              <Trash2 className="w-3 h-3" />
+                              <Pin className={`w-3.5 h-3.5 ${isPinned ? 'fill-amber-400 rotate-45' : ''}`} />
                             </button>
-                          )}
+
+                            {isSelected && <Check className="w-3.5 h-3.5 text-brand-400" />}
+
+                            {ws.id !== 'ws_default' && (
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteWorkspace(ws.id, e)}
+                                className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-rose-400 rounded transition-opacity"
+                                title="Delete workspace"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
 
                 <div className="pt-1 border-t border-slate-800">
