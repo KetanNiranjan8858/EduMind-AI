@@ -7,15 +7,54 @@ export default function LoginModal({ isOpen, onClose, currentUser, onLogin, onLo
   const [candidateId, setCandidateId] = useState(currentUser?.candidateId || '');
   const [targetExam, setTargetExam] = useState(currentUser?.targetExam || 'GATE CS 2026');
 
+  // Gmail Validation State
+  const [emailError, setEmailError] = useState('');
+  const [emailTouched, setEmailTouched] = useState(false);
+
   if (!isOpen) return null;
+
+  function validateGmail(val) {
+    const trimmed = (val || '').trim();
+    if (!trimmed) {
+      setEmailError('Gmail address is required.');
+      return false;
+    }
+    // Basic email format check
+    const emailFormatRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailFormatRegex.test(trimmed)) {
+      setEmailError('Please enter a valid email format (e.g. username@gmail.com).');
+      return false;
+    }
+    // Specific Gmail check (@gmail.com or @googlemail.com)
+    const isGmail = /^[a-zA-Z0-9._%+-]+@(gmail|googlemail)\.com$/i.test(trimmed);
+    if (!isGmail) {
+      setEmailError('Only valid Gmail addresses (@gmail.com) are allowed.');
+      return false;
+    }
+    setEmailError('');
+    return true;
+  }
+
+  function handleEmailChange(e) {
+    const val = e.target.value;
+    setEmail(val);
+    if (emailTouched) {
+      validateGmail(val);
+    }
+  }
 
   function handleSubmit(e) {
     e.preventDefault();
+    setEmailTouched(true);
+
     if (!name.trim()) return;
+
+    const isEmailValid = validateGmail(email);
+    if (!isEmailValid) return;
 
     const userData = {
       name: name.trim(),
-      email: email.trim() || `${name.trim().toLowerCase().replace(/\s+/g, '.')}@edumind.ai`,
+      email: email.trim().toLowerCase(),
       candidateId: candidateId.trim() || `EDU-${Math.floor(100000 + Math.random() * 900000)}`,
       targetExam: targetExam.trim() || 'GATE CS 2026',
       loggedInAt: new Date().toISOString()
@@ -117,19 +156,39 @@ export default function LoginModal({ isOpen, onClose, currentUser, onLogin, onLo
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Email Address
+              <label className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center justify-between">
+                <span>
+                  Gmail Address <span className="text-rose-400">*</span>
+                </span>
+                <span className="text-[10px] text-brand-300 font-mono">@gmail.com</span>
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                <Mail className={`w-4 h-4 absolute left-3.5 top-3 transition-colors ${
+                  emailError ? 'text-rose-400' : 'text-slate-500'
+                }`} />
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="e.g. ketan@example.com"
-                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-dark-950 border border-slate-800 text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-brand-500 text-xs transition-colors"
+                  onChange={handleEmailChange}
+                  onBlur={() => {
+                    setEmailTouched(true);
+                    validateGmail(email);
+                  }}
+                  placeholder="e.g. ketan@gmail.com"
+                  required
+                  className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-dark-950 border text-slate-100 placeholder:text-slate-600 focus:outline-none text-xs transition-colors ${
+                    emailError
+                      ? 'border-rose-500 focus:border-rose-400'
+                      : 'border-slate-800 focus:border-brand-500'
+                  }`}
                 />
               </div>
+              {emailError && (
+                <p className="mt-1.5 text-[11px] text-rose-400 flex items-center gap-1 animate-in fade-in duration-150">
+                  <span>⚠️</span>
+                  <span>{emailError}</span>
+                </p>
+              )}
             </div>
 
             <div>
@@ -178,8 +237,8 @@ export default function LoginModal({ isOpen, onClose, currentUser, onLogin, onLo
               </button>
               <button
                 type="submit"
-                disabled={!name.trim()}
-                className="px-5 py-2.5 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-50 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-md shadow-brand-500/20 transition-all"
+                disabled={!name.trim() || !email.trim() || Boolean(emailError)}
+                className="px-5 py-2.5 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-50 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-md shadow-brand-500/20 transition-all cursor-pointer disabled:cursor-not-allowed"
               >
                 <span>Sign In as Candidate</span>
                 <ArrowRight className="w-3.5 h-3.5" />
