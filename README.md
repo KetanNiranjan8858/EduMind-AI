@@ -60,19 +60,19 @@
 ## ⚡ Quick Start
 
 ### 1. Install Dependencies
-Run in both `server/` and `client/`:
+Run from root to install everything, or install separately:
 ```bash
-# In server/
-cd server
+# In backend/
+cd backend
 npm install
 
-# In client/
-cd ../client
+# In frontend/
+cd ../frontend
 npm install
 ```
 
-### 2. Configure Environment (`server/.env`)
-Edit `server/.env` with your settings:
+### 2. Configure Environment (`backend/.env`)
+Edit `backend/.env` with your settings:
 ```env
 PORT=5000
 GEMINI_API_KEY=your_gemini_api_key_here
@@ -86,14 +86,14 @@ DB_PORT=3306
 ```
 
 ### 3. Start Development Servers
+From the root workspace:
 ```bash
-# Terminal 1: Backend Server (runs on http://localhost:5000)
-cd server
-npm start
-
-# Terminal 2: Frontend Client (runs on http://localhost:3000)
-cd client
+# Start both Backend and Frontend concurrently:
 npm run dev
+
+# Or run separately:
+npm run backend    # Runs on http://localhost:5000
+npm run frontend   # Runs on http://localhost:3000
 ```
 
-Open `http://localhost:3000` in your browser. You can immediately click **"Try GATE CBT Exam"** in the top navigation bar to test the full CBT engine and analytics!
+Open `http://localhost:3000` in your browser. You can immediately click **"Try Demo CBT Exam"** in the top navigation bar to test the full CBT engine and analytics!

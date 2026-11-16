@@ -238,9 +238,9 @@ export default function ExamView({ quiz, onSubmitExam, onExit }) {
             </div>
             <div>
               <h1 className="text-sm font-bold tracking-wide uppercase text-slate-100 flex items-center gap-2">
-                <span>{quiz.quizTitle || 'GATE / CBT Examination Portal'}</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">
-                  {quiz.difficulty || 'GATE Level'}
+                <span>{quiz.quizTitle || 'CBT Examination Portal'}</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-brand-500/20 text-brand-300 border border-brand-500/40">
+                  {quiz.difficulty || 'Medium'}
                 </span>
               </h1>
               <p className="text-[11px] text-slate-400 font-mono">

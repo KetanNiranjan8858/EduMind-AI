@@ -64,7 +64,7 @@ export default function AnalyticsView({
             <h1 className="text-sm font-bold text-slate-100 flex items-center gap-2">
               <span>Performance Analytics & Assessment Review</span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20">
-                {quiz.difficulty || 'GATE Level'}
+                {quiz.difficulty || 'Medium'}
               </span>
             </h1>
             <p className="text-[11px] text-slate-400 font-mono">

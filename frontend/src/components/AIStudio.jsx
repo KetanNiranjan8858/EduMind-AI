@@ -21,27 +21,20 @@ export default function AIStudio({
   onLaunchExam,
   onDeleteRecentQuiz
 }) {
-  const [difficulty, setDifficulty] = useState('GATE Level');
+  const [difficulty, setDifficulty] = useState('Medium');
   const [questionCount, setQuestionCount] = useState(10);
-  const [customTopic, setCustomTopic] = useState('');
 
   const difficultyLevels = [
     { id: 'Easy', label: 'Easy', color: 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10' },
     { id: 'Medium', label: 'Medium', color: 'border-blue-500/40 text-blue-400 bg-blue-500/10' },
-    { id: 'Hard', label: 'Hard', color: 'border-amber-500/40 text-amber-400 bg-amber-500/10' },
-    {
-      id: 'GATE Level',
-      label: 'GATE Level',
-      color: 'border-rose-500/40 text-rose-300 bg-gradient-to-r from-rose-500/20 to-purple-500/20'
-    }
+    { id: 'Hard', label: 'Hard', color: 'border-amber-500/40 text-amber-400 bg-amber-500/10' }
   ];
 
   function handleGenerate() {
     if (selectedSources.length === 0 || generating) return;
     onGenerateQuiz({
       difficulty,
-      questionCount,
-      customTopic
+      questionCount
     });
   }
 
@@ -109,7 +102,7 @@ export default function AIStudio({
           <label className="block text-xs font-semibold text-slate-300 mb-2">
             Assessment Difficulty
           </label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {difficultyLevels.map((lvl) => {
               const isActive = difficulty === lvl.id;
               return (
@@ -123,7 +116,6 @@ export default function AIStudio({
                       : 'border-slate-800 bg-dark-950 text-slate-400 hover:bg-dark-850 hover:text-slate-200'
                   }`}
                 >
-                  {lvl.id === 'GATE Level' && <Award className="w-3.5 h-3.5 text-rose-400" />}
                   <span>{lvl.label}</span>
                 </button>
               );
@@ -155,20 +147,6 @@ export default function AIStudio({
             <span>20 Qs</span>
             <span>30 Qs</span>
           </div>
-        </div>
-
-        {/* Optional Subtopic focus */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-            Focus Sub-Topic <span className="text-slate-500 text-[10px] font-normal">(Optional)</span>
-          </label>
-          <input
-            type="text"
-            value={customTopic}
-            onChange={(e) => setCustomTopic(e.target.value)}
-            placeholder="e.g. Graph Theory, Paging, Page Faults"
-            className="w-full px-3 py-2 rounded-xl bg-dark-950 border border-slate-800 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-brand-500 text-xs transition-colors"
-          />
         </div>
 
         {/* Generate Button */}
@@ -228,8 +206,10 @@ export default function AIStudio({
                       <div className="flex items-center gap-1.5 mt-1 text-[10px]">
                         <span
                           className={`font-semibold px-1.5 py-0.2 rounded border ${
-                            quiz.difficulty === 'GATE Level'
-                              ? 'text-rose-400 border-rose-500/30 bg-rose-500/10'
+                            quiz.difficulty === 'Hard'
+                              ? 'text-amber-400 border-amber-500/30 bg-amber-500/10'
+                              : quiz.difficulty === 'Easy'
+                              ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10'
                               : 'text-brand-400 border-brand-500/30 bg-brand-500/10'
                           }`}
                         >

@@ -141,7 +141,12 @@ export async function generateQuiz({ sources, difficulty = 'Medium', questionCou
         // Multi-modal (PDF, Image, Video): upload to Gemini File API
         const uploadedFile = await uploadToGeminiFilesAPI(ai, fullPath, mimeType);
         if (uploadedFile) {
-          contents.push(uploadedFile);
+          contents.push({
+            fileData: {
+              fileUri: uploadedFile.uri,
+              mimeType: uploadedFile.mimeType
+            }
+          });
         } else {
           // If files API fails, send small files as base64 inlineData if feasible
           try {
@@ -165,16 +170,15 @@ export async function generateQuiz({ sources, difficulty = 'Medium', questionCou
       contents.push({ text: textContext });
     }
 
-    const systemPrompt = `You are an elite academic question author and psychometric testing specialist for high-stakes examinations (e.g. GATE, TCS NQT, GRE, university boards).
+    const systemPrompt = `You are an elite academic question author and psychometric testing specialist.
 You must create exactly ${questionCount} multiple-choice questions (MCQs) strictly and solely based on the provided documents and notes.
 
 STRICT CONSTRAINTS:
-1. Difficulty Level: "${difficulty}". For "GATE Level", questions must test deep analytical problem solving, edge cases, formulas, and conceptual rigor.
+1. Difficulty Level: "${difficulty}" (Easy, Medium, or Hard). Calibrate questions, complexity, and analytical depth strictly to this level.
 2. NO HALLUCINATIONS: Every question, correct answer, and explanation must be 100% grounded in the provided sources. Do not inject outside facts.
 3. Each question must have exactly 4 options labeled with "A.", "B.", "C.", and "D.".
 4. You must specify the "correctAnswer" as the single letter corresponding to the correct option ("A", "B", "C", or "D").
 5. Provide a detailed, step-by-step "explanation" citing the concepts from the source material.
-${customTopic ? `6. Focus particularly on the sub-topic: "${customTopic}".` : ''}
 
 You MUST return valid, pure JSON without markdown wrappers (or clean json) conforming exactly to this structure:
 {
@@ -279,7 +283,12 @@ How can I help you organize your study session or review your materials?`,
       } else {
         const uploadedFile = await uploadToGeminiFilesAPI(ai, fullPath, mimeType);
         if (uploadedFile) {
-          contents.push(uploadedFile);
+          contents.push({
+            fileData: {
+              fileUri: uploadedFile.uri,
+              mimeType: uploadedFile.mimeType
+            }
+          });
         }
       }
     }

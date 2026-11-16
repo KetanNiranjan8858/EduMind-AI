@@ -181,14 +181,13 @@ export default function App() {
     setSelectedIds([]);
   }
 
-  async function handleGenerateQuiz({ difficulty, questionCount, customTopic }) {
+  async function handleGenerateQuiz({ difficulty, questionCount }) {
     try {
       setGeneratingQuiz(true);
       const res = await generateQuiz({
         sourceIds: selectedIds,
         difficulty,
-        questionCount,
-        customTopic
+        questionCount
       });
 
       if (res.quiz) {
@@ -255,8 +254,8 @@ export default function App() {
   // Sample quick test paper for instant evaluation
   function handleLaunchSamplePaper() {
     const sampleQuiz = {
-      quizTitle: 'GATE CS: Computer Architecture & OS Paging Drill',
-      difficulty: 'GATE Level',
+      quizTitle: 'Operating Systems & Architecture Practice Drill',
+      difficulty: 'Hard',
       totalQuestions: 5,
       questions: [
         {
@@ -379,11 +378,11 @@ export default function App() {
           {/* Quick Test Demo Button */}
           <button
             onClick={handleLaunchSamplePaper}
-            className="px-3 py-1.5 bg-gradient-to-r from-rose-600/20 to-purple-600/20 hover:from-rose-600/40 hover:to-purple-600/40 text-rose-300 border border-rose-500/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all"
-            title="Try a 5-question GATE Level CBT paper immediately"
+            className="px-3 py-1.5 bg-gradient-to-r from-brand-600/20 to-indigo-600/20 hover:from-brand-600/40 hover:to-indigo-600/40 text-brand-300 border border-brand-500/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all"
+            title="Try a 5-question practice CBT paper immediately"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
-            <span>Try GATE CBT Exam</span>
+            <span>Try Demo CBT Exam</span>
           </button>
 
           {/* Backend Status indicator */}
