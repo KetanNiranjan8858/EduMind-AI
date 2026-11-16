@@ -17,8 +17,8 @@ export default function ExamPrepQuestionsView({
   onAskAiQuestion
 }) {
   return (
-    <main className="flex-1 flex flex-col min-w-0 bg-dark-950 overflow-y-auto">
-      {/* Active Selection Banner */}
+    <main className="flex-1 flex flex-col min-w-0 bg-dark-950 overflow-hidden">
+      {/* Active Selection Banner (Fixed: Does not scroll) */}
       <div className="p-4 border-b border-slate-800 bg-dark-900/40 flex items-center justify-between flex-wrap gap-3 shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-rose-500/10">
@@ -74,8 +74,8 @@ export default function ExamPrepQuestionsView({
         </div>
       </div>
 
-      {/* Content Area: Subject Question Papers & Individual Questions Browser */}
-      <div className="p-5 space-y-6">
+      {/* Content Area: Subject Question Papers & Individual Questions Browser (Scrollable) */}
+      <div className="flex-1 overflow-y-auto p-5 space-y-6">
         {/* If no subject is checked */}
         {filteredExams.length === 0 ? (
           <div className="h-96 flex flex-col items-center justify-center text-center p-6 text-slate-500">

@@ -53,10 +53,6 @@ export default function ExamPrepAnalyticsBar({
               </select>
               <ChevronDown className="w-3.5 h-3.5 text-rose-300 absolute right-2.5 top-2.5 pointer-events-none" />
             </div>
-
-            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-800/80 text-slate-300 border border-slate-700/60 font-medium">
-              10 Official Subjects • 100 High-Yield Questions
-            </span>
           </div>
 
           {/* Performance Summary Pill + Detailed Subject Analytics Button */}
@@ -123,7 +119,7 @@ export default function ExamPrepAnalyticsBar({
             </div>
           </div>
 
-          {/* Metric 2: Accuracy with Correct vs Incorrect */}
+          {/* Metric 2: Accuracy */}
           <div className="p-3.5 rounded-2xl bg-dark-950 border border-slate-800/90 shadow-sm flex flex-col justify-between group hover:border-slate-700 transition-colors">
             <div>
               <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
@@ -146,13 +142,17 @@ export default function ExamPrepAnalyticsBar({
               </div>
             </div>
 
-            <div className="mt-2.5 flex items-center gap-1.5 text-[10px] font-mono">
-              <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
-                ✓ {totalCorrect} Correct
-              </span>
-              <span className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 font-semibold">
-                ✗ {totalIncorrect} Incorrect
-              </span>
+            <div className="mt-2.5 space-y-1">
+              <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, accuracy)}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                <span>Target</span>
+                <span>{accuracy >= 75 ? 'Optimal' : totalAttempted > 0 ? '>75% goal' : 'Untested'}</span>
+              </div>
             </div>
           </div>
 
