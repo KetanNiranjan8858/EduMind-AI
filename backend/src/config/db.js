@@ -457,6 +457,42 @@ export async function query(sql, params = []) {
     return { affectedRows: prevLen - store.sources.length };
   }
 
+  // QUIZZES (Supports User ID Isolation)
+  if (lowerSql.startsWith('insert into quizzes')) {
+    let qRecord;
+    if (params.length >= 8) {
+      const [id, workspace_id, user_id, title, difficulty, total_questions, questions_json, source_files_json] = params;
+      qRecord = {
+        id,
+        workspace_id: workspace_id || 'ws_default',
+        user_id: user_id || null,
+        title,
+        difficulty,
+        total_questions: Number(total_questions),
+        questions_json,
+        source_files_json,
+        created_at: new Date().toISOString()
+      };
+    } else {
+      const [id, workspace_id, title, difficulty, total_questions, questions_json, source_files_json] = params;
+      qRecord = {
+        id,
+        workspace_id: workspace_id || 'ws_default',
+        user_id: null,
+        title,
+        difficulty,
+        total_questions: Number(total_questions),
+        questions_json,
+        source_files_json,
+        created_at: new Date().toISOString()
+      };
+    }
+    if (!store.quizzes) store.quizzes = [];
+    store.quizzes.unshift(qRecord);
+    writeFallback(store);
+    return { affectedRows: 1, insertId: qRecord.id };
+  }
+
   // EXAM ATTEMPTS (HISTORY) - Supports Candidate ID & User ID
   if (lowerSql.startsWith('select * from exam_attempts where id =')) {
     const id = params[0];

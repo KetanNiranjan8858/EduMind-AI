@@ -56,6 +56,7 @@ export default function App() {
     }
   });
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [loginPromptMessage, setLoginPromptMessage] = useState('');
   const [isExamPrepModalOpen, setIsExamPrepModalOpen] = useState(false);
 
   // Workspace State
@@ -319,13 +320,20 @@ export default function App() {
   }
 
   async function handleGenerateQuiz({ difficulty, questionCount }) {
+    if (!currentUser) {
+      setLoginPromptMessage('Please sign in or register to generate CBT assessments.');
+      setIsLoginModalOpen(true);
+      return;
+    }
+
     try {
       setGeneratingQuiz(true);
       const res = await generateQuiz({
         sourceIds: selectedIds,
         difficulty,
         questionCount,
-        workspaceId: activeWorkspaceId
+        workspaceId: activeWorkspaceId,
+        userId: currentUser?.id
       });
 
       if (res.quiz) {
@@ -548,7 +556,10 @@ export default function App() {
           {/* Login / Profile Button */}
           <button
             type="button"
-            onClick={() => setIsLoginModalOpen(true)}
+            onClick={() => {
+              setLoginPromptMessage('');
+              setIsLoginModalOpen(true);
+            }}
             className="px-3 py-1.5 bg-dark-850 hover:bg-slate-800 text-slate-200 border border-slate-700/80 rounded-xl text-xs font-medium flex items-center gap-2 transition-all shadow-sm"
             title={currentUser ? `Signed in as ${currentUser.name}` : 'Sign in as candidate'}
           >
@@ -605,12 +616,17 @@ export default function App() {
         {/* Right Panel: The AI Studio & Recent Outputs (340px) */}
         <aside className="w-88 shrink-0 h-full">
           <AIStudio
+            currentUser={currentUser}
             selectedSources={selectedSourcesList}
             recentQuizzes={recentQuizzes}
             generating={generatingQuiz}
             onGenerateQuiz={handleGenerateQuiz}
             onLaunchExam={handleLaunchExam}
             onDeleteRecentQuiz={handleDeleteRecentQuiz}
+            onRequireLogin={() => {
+              setLoginPromptMessage('Please sign in or register to generate CBT assessments.');
+              setIsLoginModalOpen(true);
+            }}
           />
         </aside>
       </div>
@@ -650,10 +666,17 @@ export default function App() {
       {/* Candidate Login Modal */}
       <LoginModal
         isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
+        onClose={() => {
+          setIsLoginModalOpen(false);
+          setLoginPromptMessage('');
+        }}
         currentUser={currentUser}
-        onLogin={handleLoginUser}
+        onLogin={(userData) => {
+          handleLoginUser(userData);
+          setLoginPromptMessage('');
+        }}
         onLogout={handleLogoutUser}
+        loginPromptMessage={loginPromptMessage}
       />
 
       {/* Exam Prep Modal */}

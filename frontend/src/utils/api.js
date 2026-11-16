@@ -116,11 +116,11 @@ export async function deleteSource(id) {
 }
 
 // ================= AI & CHAT =================
-export async function generateQuiz({ sourceIds, difficulty, questionCount, workspaceId = 'ws_default' }) {
+export async function generateQuiz({ sourceIds, difficulty, questionCount, workspaceId = 'ws_default', userId = null }) {
   const res = await fetch(`${API_BASE}/ai/generate-quiz`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sourceIds, difficulty, questionCount, workspaceId })
+    body: JSON.stringify({ sourceIds, difficulty, questionCount, workspaceId, userId })
   });
 
   if (!res.ok) {

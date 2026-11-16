@@ -10,16 +10,19 @@ import {
   Loader2,
   Trash2,
   ExternalLink,
-  Award
+  Award,
+  Lock
 } from 'lucide-react';
 
 export default function AIStudio({
+  currentUser = null,
   selectedSources = [],
   recentQuizzes = [],
   generating = false,
   onGenerateQuiz,
   onLaunchExam,
-  onDeleteRecentQuiz
+  onDeleteRecentQuiz,
+  onRequireLogin
 }) {
   const [difficulty, setDifficulty] = useState('Medium');
   const [questionCount, setQuestionCount] = useState(10);
@@ -31,6 +34,10 @@ export default function AIStudio({
   ];
 
   function handleGenerate() {
+    if (!currentUser) {
+      if (onRequireLogin) onRequireLogin();
+      return;
+    }
     if (selectedSources.length === 0 || generating) return;
     onGenerateQuiz({
       difficulty,
@@ -68,16 +75,32 @@ export default function AIStudio({
             </span>
             <span
               className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                selectedSources.length > 0
+                !currentUser
+                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                  : selectedSources.length > 0
                   ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
                   : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
               }`}
             >
-              {selectedSources.length} Selected
+              {!currentUser ? 'Sign In Required' : `${selectedSources.length} Selected`}
             </span>
           </div>
 
-          {selectedSources.length > 0 ? (
+          {!currentUser ? (
+            <div className="text-[11px] text-amber-300/90 flex items-center justify-between py-1">
+              <span className="flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                Sign in to create & attempt assessments
+              </span>
+              <button
+                type="button"
+                onClick={onRequireLogin}
+                className="text-[10px] text-brand-400 hover:text-brand-300 underline font-semibold ml-2 cursor-pointer"
+              >
+                Log In
+              </button>
+            </div>
+          ) : selectedSources.length > 0 ? (
             <div className="space-y-1 max-h-24 overflow-y-auto pr-1">
               {selectedSources.map((s) => (
                 <div
@@ -153,16 +176,23 @@ export default function AIStudio({
         <button
           type="button"
           onClick={handleGenerate}
-          disabled={generating || selectedSources.length === 0}
+          disabled={generating || (currentUser && selectedSources.length === 0)}
           className={`w-full py-3 px-4 rounded-xl font-medium text-xs text-white transition-all flex items-center justify-center gap-2 shadow-lg ${
-            selectedSources.length === 0
+            !currentUser
+              ? 'bg-gradient-to-r from-brand-600 via-indigo-600 to-rose-600 hover:from-brand-500 hover:via-indigo-500 hover:to-rose-500 shadow-brand-500/25 glow-brand cursor-pointer'
+              : selectedSources.length === 0
               ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/40'
               : generating
               ? 'bg-gradient-to-r from-brand-700 to-indigo-800 opacity-90 cursor-wait'
               : 'bg-gradient-to-r from-brand-600 via-indigo-600 to-rose-600 hover:from-brand-500 hover:via-indigo-500 hover:to-rose-500 shadow-brand-500/25 glow-brand'
           }`}
         >
-          {generating ? (
+          {!currentUser ? (
+            <>
+              <Lock className="w-4 h-4 text-amber-300" />
+              <span>Generate CBT Assessment (Sign In Required)</span>
+            </>
+          ) : generating ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin text-white" />
               <span>Gemini 2.5 is authoring paper...</span>

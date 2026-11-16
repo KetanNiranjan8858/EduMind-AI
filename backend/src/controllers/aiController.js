@@ -7,7 +7,14 @@ import * as geminiService from '../services/geminiService.js';
  */
 export async function generateQuizHandler(req, res) {
   try {
-    const { sourceIds, difficulty = 'Medium', questionCount = 5, workspaceId = 'ws_default' } = req.body;
+    const { sourceIds, difficulty = 'Medium', questionCount = 5, workspaceId = 'ws_default', userId } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required. Please sign in with your candidate ID or email to generate CBT assessments.'
+      });
+    }
 
     if (!Array.isArray(sourceIds) || sourceIds.length === 0) {
       return res.status(400).json({
@@ -41,13 +48,15 @@ export async function generateQuizHandler(req, res) {
     const quizId = `quiz_${Date.now()}_${uuidv4().slice(0, 8)}`;
     quiz.id = quizId;
     quiz.workspaceId = workspaceId;
+    quiz.userId = userId;
 
     try {
       await db.query(
-        'INSERT INTO quizzes (id, workspace_id, title, difficulty, total_questions, questions_json, source_files_json) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO quizzes (id, workspace_id, user_id, title, difficulty, total_questions, questions_json, source_files_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         [
           quizId,
           workspaceId,
+          userId,
           quiz.quizTitle || 'Assessment Paper',
           difficulty,
           count,

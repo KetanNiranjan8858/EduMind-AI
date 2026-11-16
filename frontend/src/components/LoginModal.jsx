@@ -29,7 +29,14 @@ import {
   authResetPassword
 } from '../utils/api';
 
-export default function LoginModal({ isOpen, onClose, currentUser, onLogin, onLogout }) {
+export default function LoginModal({
+  isOpen,
+  onClose,
+  currentUser,
+  onLogin,
+  onLogout,
+  loginPromptMessage = ''
+}) {
   // Tab state: 'signin' | 'signup'
   const [authTab, setAuthTab] = useState('signin');
   // Sub-view: whether forgot password flow is active
@@ -632,6 +639,14 @@ export default function LoginModal({ isOpen, onClose, currentUser, onLogin, onLo
             </div>
 
             <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+              {/* Reason For Login Banner */}
+              {loginPromptMessage && !errorMessage && !successMessage && (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2 animate-in fade-in">
+                  <Lock className="w-4 h-4 shrink-0 text-amber-400" />
+                  <span>{loginPromptMessage}</span>
+                </div>
+              )}
+
               {/* Error Banner */}
               {errorMessage && (
                 <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2 animate-in fade-in">
