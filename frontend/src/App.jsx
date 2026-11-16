@@ -17,6 +17,7 @@ import WorkspaceModal from './components/WorkspaceModal';
 import HistoryModal from './components/HistoryModal';
 import LoginModal from './components/LoginModal';
 import ExamPrepModal from './components/ExamPrepModal';
+import ExamPrepDashboard from './components/ExamPrepDashboard';
 import ExamView from './components/ExamView';
 import AnalyticsView from './components/AnalyticsView';
 
@@ -37,11 +38,14 @@ import {
 import { calculateScore } from './utils/helpers';
 
 export default function App() {
-  // Mode: 'studio' | 'exam' | 'analytics'
+  // Mode: 'studio' | 'exam' | 'analytics' | 'examprep'
   const [viewMode, setViewMode] = useState(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('mode') === 'cbt' || urlParams.get('mode') === 'exam') {
       return 'exam';
+    }
+    if (urlParams.get('mode') === 'examprep' || urlParams.get('mode') === 'prep') {
+      return 'examprep';
     }
     return 'studio';
   });
@@ -346,19 +350,12 @@ export default function App() {
     }
   }
 
-  // Cross-Tab Handoff: Save quiz to localStorage and spawn CBT exam in new tab
+  // Launch CBT Exam
   function handleLaunchExam(quiz) {
     try {
       localStorage.setItem('edumind_active_exam', JSON.stringify(quiz));
       setActiveQuiz(quiz);
-
-      // Attempt to open in dedicated tab
-      const examUrl = `${window.location.origin}${window.location.pathname}?mode=cbt`;
-      const newTab = window.open(examUrl, '_blank');
-
-      if (!newTab || newTab.closed || typeof newTab.closed === 'undefined') {
-        setViewMode('exam');
-      }
+      setViewMode('exam');
     } catch (err) {
       console.error('Failed to launch exam:', err);
       setActiveQuiz(quiz);
@@ -412,7 +409,7 @@ export default function App() {
 
   function handleReturnToStudio() {
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('mode') === 'cbt') {
+    if (urlParams.get('mode') === 'cbt' || urlParams.get('mode') === 'exam' || urlParams.get('mode') === 'examprep') {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
     setViewMode('studio');
@@ -519,9 +516,40 @@ export default function App() {
     );
   }
 
+  // Route 3: The Dedicated Exam Prep Dashboard & AI Concept Tutor
+  if (viewMode === 'examprep') {
+    return (
+      <>
+        <ExamPrepDashboard
+          currentUser={currentUser}
+          onLaunchExam={handleLaunchExam}
+          onReturnToStudio={handleReturnToStudio}
+          onRequireLogin={() => {
+            setLoginPromptMessage('Please sign in or register to attempt CBT exams and track scores.');
+            setIsLoginModalOpen(true);
+          }}
+        />
+        <LoginModal
+          isOpen={isLoginModalOpen}
+          onClose={() => {
+            setIsLoginModalOpen(false);
+            setLoginPromptMessage('');
+          }}
+          currentUser={currentUser}
+          onLogin={(userData) => {
+            handleLoginUser(userData);
+            setLoginPromptMessage('');
+          }}
+          onLogout={handleLogoutUser}
+          loginPromptMessage={loginPromptMessage}
+        />
+      </>
+    );
+  }
+
   const selectedSourcesList = sources.filter((s) => selectedIds.includes(s.id));
 
-  // Route 3: Central Studio (3-Panel Layout)
+  // Route 4: Central Studio (3-Panel Layout)
   return (
     <div className="h-screen flex flex-col bg-dark-950 text-slate-100 overflow-hidden font-sans">
       {/* Top Application Bar: Clean branding + Exam Prep & Login Button */}
@@ -545,9 +573,9 @@ export default function App() {
           {/* Exam Prep Option */}
           <button
             type="button"
-            onClick={() => setIsExamPrepModalOpen(true)}
-            className="px-3 py-1.5 bg-gradient-to-r from-rose-500/15 to-purple-500/15 hover:from-rose-500/25 hover:to-purple-500/25 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
-            title="Open Exam Preparation Tracks & Benchmarks"
+            onClick={() => setViewMode('examprep')}
+            className="px-3 py-1.5 bg-gradient-to-r from-rose-500/15 to-purple-500/15 hover:from-rose-500/25 hover:to-purple-500/25 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+            title="Open Exam Preparation Hub & Curated CBT Library"
           >
             <Target className="w-3.5 h-3.5 text-rose-400" />
             <span>Exam Prep</span>
