@@ -7,7 +7,8 @@ import {
   ExamPrepSubjectSidebar,
   ExamPrepQuestionsView,
   ExamPrepAiSidebar,
-  SubjectAnalyticsModal
+  SubjectAnalyticsModal,
+  GenerateExamModal
 } from './examprep';
 
 /**
@@ -29,6 +30,9 @@ export default function ExamPrepDashboard({
 
   // Modal State: Subject-wise Detailed Analytics Modal
   const [showSubjectAnalytics, setShowSubjectAnalytics] = useState(false);
+
+  // Modal State: Generate Custom Exam for Attempt Modal
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
 
   // Question inspection & answer reveal state
   const [revealedExplanations, setRevealedExplanations] = useState({});
@@ -363,7 +367,7 @@ export default function ExamPrepDashboard({
 
       {/* 3. Main Split View */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar: Select Subject with Checkboxes */}
+        {/* Left Sidebar: Select Subject with Checkboxes (Clean: No enclosing boxes) */}
         <ExamPrepSubjectSidebar
           subjects={GATE_SUBJECTS}
           isAllSelected={isAllSelected}
@@ -371,9 +375,6 @@ export default function ExamPrepDashboard({
           onToggleSubject={handleToggleSubject}
           onSelectAll={() => setSelectedSubjectIds(['all'])}
           onClearAll={() => setSelectedSubjectIds([])}
-          totalQuestionsInBank={totalQuestionsInBank}
-          gateExams={GATE_EXAMS}
-          attemptedSubjectIds={attemptedSubjectIds}
           allSubjectIds={allSubjectIds}
         />
 
@@ -387,6 +388,7 @@ export default function ExamPrepDashboard({
           onSelectAllSubjects={() => setSelectedSubjectIds(['all'])}
           onSelectOnlySubject={handleSelectOnlySubject}
           onLaunchExam={onLaunchExam}
+          onOpenGenerateModal={() => setShowGenerateModal(true)}
           revealedExplanations={revealedExplanations}
           onToggleExplanation={toggleExplanation}
           onAskAiQuestion={handleAskAiQuestion}
@@ -420,6 +422,16 @@ export default function ExamPrepDashboard({
           setSelectedSubjectIds([subjectId]);
           setShowSubjectAnalytics(false);
         }}
+      />
+
+      {/* 5. Generate Exam for Attempt Modal */}
+      <GenerateExamModal
+        isOpen={showGenerateModal}
+        onClose={() => setShowGenerateModal(false)}
+        filteredExams={filteredExams}
+        allExams={GATE_EXAMS}
+        isAllSelected={isAllSelected}
+        onLaunchExam={onLaunchExam}
       />
     </div>
   );

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookMarked, Filter, Play, Clock, BookOpen } from 'lucide-react';
+import { BookMarked, Filter, Play, Clock, BookOpen, Sparkles } from 'lucide-react';
 import ExamPrepQuestionCard from './ExamPrepQuestionCard';
 
 export default function ExamPrepQuestionsView({
@@ -11,6 +11,7 @@ export default function ExamPrepQuestionsView({
   onSelectAllSubjects,
   onSelectOnlySubject,
   onLaunchExam,
+  onOpenGenerateModal,
   revealedExplanations = {},
   onToggleExplanation,
   onAskAiQuestion
@@ -38,7 +39,7 @@ export default function ExamPrepQuestionsView({
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
               {isAllSelected
-                ? 'Displaying all 10 GATE CS benchmark papers. Check or uncheck subjects on the left sidebar to isolate specific modules.'
+                ? 'Displaying all 10 GATE CS benchmark papers. Click "Generate Exam" on the right to attempt a custom CBT test.'
                 : filteredExams.length === 1
                 ? `Showing high-yield GATE questions and benchmark exam for ${filteredExams[0].subject}.`
                 : `Showing combined benchmark exams and questions for: ${filteredExams
@@ -48,15 +49,29 @@ export default function ExamPrepQuestionsView({
           </div>
         </div>
 
-        {!isAllSelected && (
+        {/* Right Side Actions on All Official GATE CS/IT Subjects Banner */}
+        <div className="flex items-center gap-2.5">
+          {!isAllSelected && (
+            <button
+              type="button"
+              onClick={onSelectAllSubjects}
+              className="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-xl bg-dark-900 border border-slate-800 hover:border-slate-700 transition-colors cursor-pointer"
+            >
+              ← View All Subjects
+            </button>
+          )}
+
+          {/* Right Side: Generate Exam for Attempt Button */}
           <button
             type="button"
-            onClick={onSelectAllSubjects}
-            className="text-xs text-slate-400 hover:text-white px-3 py-1 rounded-lg bg-dark-900 border border-slate-800 hover:border-slate-700 transition-colors cursor-pointer"
+            onClick={onOpenGenerateModal}
+            className="px-4 py-2 bg-gradient-to-r from-rose-600 via-purple-600 to-brand-600 hover:from-rose-500 hover:via-purple-500 hover:to-brand-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-rose-600/20 hover:scale-[1.02] transition-all cursor-pointer"
+            title="Generate a custom exam for attempt across official GATE CS/IT subjects"
           >
-            ← View All Subjects
+            <Sparkles className="w-3.5 h-3.5 text-rose-200" />
+            <span>Generate Exam</span>
           </button>
-        )}
+        </div>
       </div>
 
       {/* Content Area: Subject Question Papers & Individual Questions Browser */}
@@ -82,14 +97,24 @@ export default function ExamPrepQuestionsView({
         ) : isAllSelected ? (
           /* When All Subjects Are Selected: Overview Grid of All 10 Benchmark Papers */
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
                 <BookMarked className="w-4 h-4 text-rose-400" />
                 All 10 GATE CS/IT Benchmark Question Papers
               </h3>
-              <span className="text-xs font-mono text-slate-500">
-                Total {gateExams.length} Papers • {totalQuestionsInBank} Questions
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-mono text-slate-500">
+                  Total {gateExams.length} Papers • {totalQuestionsInBank} Questions
+                </span>
+                <button
+                  type="button"
+                  onClick={onOpenGenerateModal}
+                  className="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Generate Exam for Attempt</span>
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

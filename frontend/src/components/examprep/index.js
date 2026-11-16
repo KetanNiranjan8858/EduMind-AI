@@ -5,4 +5,5 @@ export { default as ExamPrepQuestionsView } from './ExamPrepQuestionsView';
 export { default as ExamPrepQuestionCard } from './ExamPrepQuestionCard';
 export { default as ExamPrepAiSidebar } from './ExamPrepAiSidebar';
 export { default as SubjectAnalyticsModal } from './SubjectAnalyticsModal';
+export { default as GenerateExamModal } from './GenerateExamModal';
 export * from './subjectIcons';
