@@ -245,6 +245,17 @@ export async function query(sql, params = []) {
     writeFallback(store);
     return { affectedRows: 1, insertId: id };
   }
+  if (lowerSql.startsWith('update workspaces set name = ? where id = ?')) {
+    const [name, id] = params;
+    const found = store.workspaces.find(w => w.id === id);
+    if (found) {
+      found.name = name;
+      found.updated_at = new Date().toISOString();
+      writeFallback(store);
+      return { affectedRows: 1 };
+    }
+    return { affectedRows: 0 };
+  }
   if (lowerSql.startsWith('delete from workspaces where id =')) {
     const id = params[0];
     store.workspaces = store.workspaces.filter(w => w.id !== id);

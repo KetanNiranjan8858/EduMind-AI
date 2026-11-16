@@ -1,15 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Brain,
   Layers,
   History,
-  ChevronDown,
-  Plus,
-  Trash2,
-  Check,
-  RotateCcw,
-  Sparkles,
-  Pin
+  Target,
+  User,
+  Sparkles
 } from 'lucide-react';
 
 import SourcePanel from './components/SourcePanel';
@@ -19,12 +15,15 @@ import NoteModal from './components/NoteModal';
 import SourcePreviewModal from './components/SourcePreviewModal';
 import WorkspaceModal from './components/WorkspaceModal';
 import HistoryModal from './components/HistoryModal';
+import LoginModal from './components/LoginModal';
+import ExamPrepModal from './components/ExamPrepModal';
 import ExamView from './components/ExamView';
 import AnalyticsView from './components/AnalyticsView';
 
 import {
   fetchWorkspaces,
   createWorkspace,
+  updateWorkspace,
   deleteWorkspace,
   fetchSources,
   uploadFiles,
@@ -47,17 +46,27 @@ export default function App() {
     return 'studio';
   });
 
+  // User Authentication State
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('edumind_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isExamPrepModalOpen, setIsExamPrepModalOpen] = useState(false);
+
   // Workspace State
   const [workspaces, setWorkspaces] = useState([]);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState(() => {
     return localStorage.getItem('edumind_active_workspace_id') || 'ws_default';
   });
-  const [isWorkspaceDropdownOpen, setIsWorkspaceDropdownOpen] = useState(false);
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
-  const dropdownRef = useRef(null);
 
-  // Pinned Workspaces
+  // Pinned Workspaces State
   const [pinnedIds, setPinnedIds] = useState(() => {
     try {
       const saved = localStorage.getItem('edumind_pinned_workspaces');
@@ -66,17 +75,6 @@ export default function App() {
       return [];
     }
   });
-
-  function handleTogglePin(wsId, e) {
-    e.stopPropagation();
-    setPinnedIds((prev) => {
-      const next = prev.includes(wsId) ? prev.filter((id) => id !== wsId) : [...prev, wsId];
-      try {
-        localStorage.setItem('edumind_pinned_workspaces', JSON.stringify(next));
-      } catch {}
-      return next;
-    });
-  }
 
   // Active Workspace Data
   const [sources, setSources] = useState([]);
@@ -119,17 +117,6 @@ export default function App() {
       return null;
     }
   });
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setIsWorkspaceDropdownOpen(false);
-      }
-    }
-    window.addEventListener('mousedown', handleClickOutside);
-    return () => window.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Listen for Cross-Tab localStorage handoff events
   useEffect(() => {
@@ -215,6 +202,26 @@ export default function App() {
     }
   }
 
+  function handleTogglePin(wsId, e) {
+    if (e) e.stopPropagation();
+    setPinnedIds((prev) => {
+      const next = prev.includes(wsId) ? prev.filter((id) => id !== wsId) : [...prev, wsId];
+      try {
+        localStorage.setItem('edumind_pinned_workspaces', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }
+
+  async function handleUpdateWorkspaceName(id, newName) {
+    try {
+      await updateWorkspace(id, { name: newName });
+      setWorkspaces(prev => prev.map(w => w.id === id ? { ...w, name: newName } : w));
+    } catch (err) {
+      alert('Failed to update workspace name: ' + err.message);
+    }
+  }
+
   async function handleCreateWorkspace(data) {
     const res = await createWorkspace(data);
     if (res.workspace) {
@@ -224,7 +231,7 @@ export default function App() {
   }
 
   async function handleDeleteWorkspace(id, e) {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     if (!window.confirm('Are you sure you want to delete this workspace and all its data?')) return;
     try {
       await deleteWorkspace(id);
@@ -351,7 +358,6 @@ export default function App() {
         timeTakenSeconds: submissionData.timeTakenSeconds,
         stats
       });
-      // Refresh history for active workspace
       const histRes = await fetchExamHistory(activeWorkspaceId);
       if (histRes.history) setExamHistory(histRes.history);
     } catch (err) {
@@ -379,7 +385,6 @@ export default function App() {
     }
   }
 
-  // Review a past exam attempt from History
   function handleReviewPastAttempt(attempt) {
     const data = {
       quiz: attempt.quiz,
@@ -391,7 +396,6 @@ export default function App() {
     setViewMode('analytics');
   }
 
-  // Retake a past exam from History
   function handleRetakePastAttempt(attempt) {
     setActiveQuiz(attempt.quiz);
     handleLaunchExam(attempt.quiz);
@@ -404,6 +408,31 @@ export default function App() {
       setExamHistory(prev => prev.filter(a => a.id !== id));
     } catch (err) {
       alert('Failed to delete attempt: ' + err.message);
+    }
+  }
+
+  function handleLoginUser(userData) {
+    setCurrentUser(userData);
+    localStorage.setItem('edumind_user', JSON.stringify(userData));
+  }
+
+  function handleLogoutUser() {
+    setCurrentUser(null);
+    localStorage.removeItem('edumind_user');
+  }
+
+  async function handleSelectPrepTrack(track) {
+    // Check if track workspace exists or create one
+    const existing = workspaces.find(w => w.name.toLowerCase().includes(track.id));
+    if (existing) {
+      setActiveWorkspaceId(existing.id);
+    } else {
+      await handleCreateWorkspace({
+        name: track.title,
+        description: track.description,
+        color: track.id === 'gate' ? 'rose' : track.id === 'tcs' ? 'cyan' : 'emerald',
+        icon: 'book'
+      });
     }
   }
 
@@ -440,23 +469,10 @@ export default function App() {
 
   const selectedSourcesList = sources.filter((s) => selectedIds.includes(s.id));
 
-  // Helper color dot for workspace
-  function getWorkspaceColorDot(color) {
-    switch (color) {
-      case 'emerald': return 'bg-emerald-400';
-      case 'amber': return 'bg-amber-400';
-      case 'rose': return 'bg-rose-400';
-      case 'cyan': return 'bg-cyan-400';
-      case 'indigo':
-      default:
-        return 'bg-indigo-400';
-    }
-  }
-
   // Route 3: Central Studio (3-Panel Layout)
   return (
     <div className="h-screen flex flex-col bg-dark-950 text-slate-100 overflow-hidden font-sans">
-      {/* Top Application Bar (Clean & Professional) */}
+      {/* Top Application Bar: Clean branding + Exam Prep & Login Button */}
       <header className="h-14 bg-dark-900 border-b border-slate-800 px-5 flex items-center justify-between shrink-0 shadow-sm z-30">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-600 to-rose-600 flex items-center justify-center text-white shadow-md shadow-brand-500/25">
@@ -472,130 +488,50 @@ export default function App() {
           </div>
         </div>
 
-        {/* Global Controls: Workspace Switcher & History */}
+        {/* Global Controls: Exam Prep & Login Button */}
         <div className="flex items-center gap-3">
-          {/* Workspace Switcher Dropdown */}
-          <div className="relative" ref={dropdownRef}>
-            <button
-              onClick={() => setIsWorkspaceDropdownOpen(!isWorkspaceDropdownOpen)}
-              className="px-3 py-1.5 bg-dark-850 hover:bg-slate-800 text-slate-200 border border-slate-700/80 rounded-xl text-xs font-medium flex items-center gap-2 transition-all shadow-sm"
-              title="Switch Workspace"
-            >
-              <span className={`w-2 h-2 rounded-full ${getWorkspaceColorDot(activeWorkspace.color)}`} />
-              <span className="max-w-[150px] sm:max-w-[200px] truncate">{activeWorkspace.name}</span>
-              {pinnedIds.includes(activeWorkspace.id) && (
-                <Pin className="w-3 h-3 text-amber-400 fill-amber-400 rotate-45 shrink-0" title="Pinned" />
-              )}
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-            </button>
-
-            {/* Dropdown Menu */}
-            {isWorkspaceDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-72 bg-dark-900 border border-slate-700/80 rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
-                <div className="px-3.5 py-1.5 border-b border-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-                  <span>Workspaces</span>
-                  <span className="text-[9px] text-slate-500 font-normal">Click pin to prioritize</span>
-                </div>
-
-                <div className="max-h-60 overflow-y-auto py-1">
-                  {[...workspaces]
-                    .sort((a, b) => {
-                      const aPin = pinnedIds.includes(a.id);
-                      const bPin = pinnedIds.includes(b.id);
-                      if (aPin && !bPin) return -1;
-                      if (!aPin && bPin) return 1;
-                      return 0;
-                    })
-                    .map((ws) => {
-                      const isSelected = ws.id === activeWorkspaceId;
-                      const isPinned = pinnedIds.includes(ws.id);
-                      return (
-                        <div
-                          key={ws.id}
-                          onClick={() => {
-                            setActiveWorkspaceId(ws.id);
-                            setIsWorkspaceDropdownOpen(false);
-                          }}
-                          className={`group px-3 py-2 text-xs flex items-center justify-between cursor-pointer transition-colors ${
-                            isSelected ? 'bg-brand-500/15 text-white font-semibold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 truncate">
-                            <span className={`w-2 h-2 rounded-full shrink-0 ${getWorkspaceColorDot(ws.color)}`} />
-                            <span className="truncate">{ws.name}</span>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {/* Pin / Unpin Button */}
-                            <button
-                              type="button"
-                              onClick={(e) => handleTogglePin(ws.id, e)}
-                              className={`p-1 rounded transition-colors ${
-                                isPinned
-                                  ? 'text-amber-400 hover:text-amber-300'
-                                  : 'text-slate-500 hover:text-slate-300 opacity-40 group-hover:opacity-100'
-                              }`}
-                              title={isPinned ? 'Unpin workspace' : 'Pin workspace to top'}
-                            >
-                              <Pin className={`w-3.5 h-3.5 ${isPinned ? 'fill-amber-400 rotate-45' : ''}`} />
-                            </button>
-
-                            {isSelected && <Check className="w-3.5 h-3.5 text-brand-400" />}
-
-                            {ws.id !== 'ws_default' && (
-                              <button
-                                type="button"
-                                onClick={(e) => handleDeleteWorkspace(ws.id, e)}
-                                className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-rose-400 rounded transition-opacity"
-                                title="Delete workspace"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-
-                <div className="pt-1 border-t border-slate-800">
-                  <button
-                    onClick={() => {
-                      setIsWorkspaceDropdownOpen(false);
-                      setIsWorkspaceModalOpen(true);
-                    }}
-                    className="w-full px-3 py-2 text-xs text-brand-400 hover:text-brand-300 hover:bg-brand-500/10 flex items-center gap-2 transition-colors font-medium"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Create New Workspace</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Exam History Button */}
+          {/* Exam Prep Option */}
           <button
-            onClick={() => setIsHistoryModalOpen(true)}
-            className="px-3 py-1.5 bg-dark-850 hover:bg-slate-800 text-slate-200 border border-slate-700/80 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
-            title="View completed exam history and past scores"
+            type="button"
+            onClick={() => setIsExamPrepModalOpen(true)}
+            className="px-3 py-1.5 bg-gradient-to-r from-rose-500/15 to-purple-500/15 hover:from-rose-500/25 hover:to-purple-500/25 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+            title="Open Exam Preparation Tracks & Benchmarks"
           >
-            <History className="w-3.5 h-3.5 text-brand-400" />
-            <span>History</span>
-            {examHistory.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-brand-500/20 text-brand-300 font-mono text-[10px] border border-brand-500/30">
-                {examHistory.length}
-              </span>
-            )}
+            <Target className="w-3.5 h-3.5 text-rose-400" />
+            <span>Exam Prep</span>
+          </button>
+
+          {/* Login / Profile Button */}
+          <button
+            type="button"
+            onClick={() => setIsLoginModalOpen(true)}
+            className="px-3 py-1.5 bg-dark-850 hover:bg-slate-800 text-slate-200 border border-slate-700/80 rounded-xl text-xs font-medium flex items-center gap-2 transition-all shadow-sm"
+            title={currentUser ? `Signed in as ${currentUser.name}` : 'Sign in as candidate'}
+          >
+            <div className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center font-bold text-[10px]">
+              {currentUser ? currentUser.name.charAt(0).toUpperCase() : <User className="w-3 h-3" />}
+            </div>
+            <span className="max-w-[120px] truncate">{currentUser ? currentUser.name : 'Login'}</span>
           </button>
         </div>
       </header>
 
       {/* 3-Panel Main Workspace */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Panel: Central Workspace & Source Management (320px) */}
+        {/* Left Panel: Workspace List & History Just Above Sources & Notes */}
         <aside className="w-80 shrink-0 h-full">
           <SourcePanel
+            workspaces={workspaces}
+            activeWorkspace={activeWorkspace}
+            activeWorkspaceId={activeWorkspaceId}
+            pinnedIds={pinnedIds}
+            examHistoryCount={examHistory.length}
+            onSelectWorkspace={(id) => setActiveWorkspaceId(id)}
+            onTogglePin={handleTogglePin}
+            onUpdateWorkspaceName={handleUpdateWorkspaceName}
+            onOpenWorkspaceModal={() => setIsWorkspaceModalOpen(true)}
+            onDeleteWorkspace={handleDeleteWorkspace}
+            onOpenHistoryModal={() => setIsHistoryModalOpen(true)}
             sources={sources}
             selectedIds={selectedIds}
             loading={loadingSources}
@@ -662,6 +598,22 @@ export default function App() {
         onReviewAttempt={handleReviewPastAttempt}
         onRetakeAttempt={handleRetakePastAttempt}
         onDeleteAttempt={handleDeletePastAttempt}
+      />
+
+      {/* Candidate Login Modal */}
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        currentUser={currentUser}
+        onLogin={handleLoginUser}
+        onLogout={handleLogoutUser}
+      />
+
+      {/* Exam Prep Modal */}
+      <ExamPrepModal
+        isOpen={isExamPrepModalOpen}
+        onClose={() => setIsExamPrepModalOpen(false)}
+        onSelectTrack={handleSelectPrepTrack}
       />
     </div>
   );

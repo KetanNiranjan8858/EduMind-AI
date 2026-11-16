@@ -29,6 +29,19 @@ export async function createWorkspace({ name, description, color, icon }) {
   return await res.json();
 }
 
+export async function updateWorkspace(id, { name, description, color }) {
+  const res = await fetch(`${API_BASE}/workspaces/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, description, color })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Failed to update workspace');
+  }
+  return await res.json();
+}
+
 export async function deleteWorkspace(id) {
   const res = await fetch(`${API_BASE}/workspaces/${id}`, {
     method: 'DELETE'

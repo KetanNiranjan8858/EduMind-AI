@@ -49,6 +49,32 @@ export async function createWorkspace(req, res) {
   }
 }
 
+export async function updateWorkspace(req, res) {
+  try {
+    const { id } = req.params;
+    const { name, description, color } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Workspace name is required.' });
+    }
+
+    await db.query(
+      'UPDATE workspaces SET name = ? WHERE id = ?',
+      [name.trim(), id]
+    );
+
+    return res.json({
+      success: true,
+      message: 'Workspace updated successfully',
+      id,
+      name: name.trim()
+    });
+  } catch (err) {
+    console.error('[Workspace API] Error updating workspace:', err);
+    return res.status(500).json({ success: false, message: 'Failed to update workspace', error: err.message });
+  }
+}
+
 export async function deleteWorkspace(req, res) {
   try {
     const { id } = req.params;
