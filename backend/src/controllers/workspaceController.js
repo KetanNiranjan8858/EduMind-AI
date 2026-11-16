@@ -79,10 +79,6 @@ export async function deleteWorkspace(req, res) {
   try {
     const { id } = req.params;
 
-    if (id === 'ws_default') {
-      return res.status(400).json({ success: false, message: 'Cannot delete the default workspace.' });
-    }
-
     await db.query('DELETE FROM workspaces WHERE id = ?', [id]);
 
     return res.json({

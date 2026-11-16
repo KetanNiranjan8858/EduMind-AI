@@ -9,11 +9,48 @@ import {
   AlertCircle,
   HelpCircle,
   BookOpen,
-  Loader2
+  Loader2,
+  Edit2,
+  Check,
+  X
 } from 'lucide-react';
 import { sendChatMessage, fetchChatHistory, clearChatHistory } from '../utils/api';
 
-export default function ChatHub({ selectedSources = [], allSources = [], workspaceId = 'ws_default', workspaceName = 'Workspace' }) {
+export default function ChatHub({
+  selectedSources = [],
+  allSources = [],
+  workspaceId = 'ws_default',
+  workspaceName = 'Workspace',
+  onUpdateWorkspaceName
+}) {
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(workspaceName);
+
+  useEffect(() => {
+    setEditedName(workspaceName);
+  }, [workspaceName]);
+
+  async function handleSaveWorkspaceName() {
+    if (!editedName.trim() || editedName.trim() === workspaceName) {
+      setIsEditingName(false);
+      return;
+    }
+    if (onUpdateWorkspaceName) {
+      await onUpdateWorkspaceName(workspaceId, editedName.trim());
+    }
+    setIsEditingName(false);
+  }
+
+  function handleNameKeyDown(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSaveWorkspaceName();
+    } else if (e.key === 'Escape') {
+      setIsEditingName(false);
+      setEditedName(workspaceName);
+    }
+  }
+
   const defaultWelcome = {
     id: 'welcome',
     sender: 'ai',
@@ -142,26 +179,48 @@ This central workspace allows you to converse with Google Gemini 2.5 Flash groun
               <h2 className="text-sm font-bold text-slate-100">
                 Central Study Workspace
               </h2>
-              <span className="px-2 py-0.5 text-[10px] font-semibold bg-dark-950 text-brand-300 rounded-md border border-brand-500/20">
-                {workspaceName}
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400">
-              {selectedSources.length > 0 ? (
-                <span>
-                  Grounded in{' '}
-                  <strong className="text-brand-400">
-                    {selectedSources.length} selected source(s)
-                  </strong>
-                  : {selectedSources.map((s) => s.original_name).join(', ')}
-                </span>
+              {isEditingName ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={editedName}
+                    onChange={(e) => setEditedName(e.target.value)}
+                    onKeyDown={handleNameKeyDown}
+                    className="px-2 py-0.5 text-xs bg-dark-950 text-white rounded-md border border-brand-500 focus:outline-none"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveWorkspaceName}
+                    className="p-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs"
+                    title="Save name"
+                  >
+                    <Check className="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingName(false);
+                      setEditedName(workspaceName);
+                    }}
+                    className="p-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs"
+                    title="Cancel"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
               ) : (
-                <span className="text-amber-400/90 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3 inline" />
-                  No sources selected. Check boxes in the left panel to ground answers.
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingName(true)}
+                  className="group px-2 py-0.5 text-[11px] font-semibold bg-dark-950 hover:bg-slate-800 text-brand-300 rounded-md border border-brand-500/20 flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Click to edit workspace name"
+                >
+                  <span>{workspaceName}</span>
+                  <Edit2 className="w-2.5 h-2.5 text-slate-500 group-hover:text-brand-300 transition-colors" />
+                </button>
               )}
-            </p>
+            </div>
           </div>
         </div>
 

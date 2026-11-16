@@ -235,9 +235,24 @@ export default function App() {
     if (!window.confirm('Are you sure you want to delete this workspace and all its data?')) return;
     try {
       await deleteWorkspace(id);
-      setWorkspaces(prev => prev.filter(w => w.id !== id));
+      const remaining = workspaces.filter(w => w.id !== id);
+      setWorkspaces(remaining);
       if (activeWorkspaceId === id) {
-        setActiveWorkspaceId('ws_default');
+        if (remaining.length > 0) {
+          setActiveWorkspaceId(remaining[0].id);
+        } else {
+          try {
+            const res = await createWorkspace({ name: 'General Study Workspace', color: 'indigo' });
+            if (res.workspace) {
+              setWorkspaces([res.workspace]);
+              setActiveWorkspaceId(res.workspace.id);
+            } else {
+              setActiveWorkspaceId('ws_default');
+            }
+          } catch {
+            setActiveWorkspaceId('ws_default');
+          }
+        }
       }
     } catch (err) {
       alert(err.message || 'Failed to delete workspace');
@@ -553,6 +568,7 @@ export default function App() {
             allSources={sources}
             workspaceId={activeWorkspaceId}
             workspaceName={activeWorkspace.name}
+            onUpdateWorkspaceName={handleUpdateWorkspaceName}
           />
         </main>
 

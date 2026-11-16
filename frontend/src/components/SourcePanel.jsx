@@ -56,44 +56,41 @@ export default function SourcePanel({
   const [dragOver, setDragOver] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  // Inline Workspace Renaming State
-  const [editingWsId, setEditingWsId] = useState(null);
-  const [editWsName, setEditWsName] = useState('');
+  // Inline Workspace Renaming State for Active Workspace
+  const [isEditingActiveWs, setIsEditingActiveWs] = useState(false);
+  const [activeWsName, setActiveWsName] = useState(activeWorkspace?.name || '');
+
+  useEffect(() => {
+    setActiveWsName(activeWorkspace?.name || '');
+  }, [activeWorkspace?.name]);
 
   // Close dropdown on outside click
   useEffect(() => {
     function handleClickOutside(e) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setIsDropdownOpen(false);
-        setEditingWsId(null);
       }
     }
     window.addEventListener('mousedown', handleClickOutside);
     return () => window.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  function handleStartEdit(ws, e) {
-    if (e) e.stopPropagation();
-    setEditingWsId(ws.id);
-    setEditWsName(ws.name);
-  }
-
-  async function handleSaveEdit(wsId, e) {
-    if (e) e.stopPropagation();
-    if (!editWsName.trim()) {
-      setEditingWsId(null);
+  async function handleSaveActiveWs() {
+    if (!activeWsName.trim() || activeWsName.trim() === activeWorkspace?.name) {
+      setIsEditingActiveWs(false);
       return;
     }
-    await onUpdateWorkspaceName(wsId, editWsName.trim());
-    setEditingWsId(null);
+    await onUpdateWorkspaceName(activeWorkspace.id, activeWsName.trim());
+    setIsEditingActiveWs(false);
   }
 
-  function handleEditKeyDown(wsId, e) {
+  function handleActiveWsKeyDown(e) {
     if (e.key === 'Enter') {
       e.preventDefault();
-      handleSaveEdit(wsId, e);
+      handleSaveActiveWs();
     } else if (e.key === 'Escape') {
-      setEditingWsId(null);
+      setIsEditingActiveWs(false);
+      setActiveWsName(activeWorkspace?.name || '');
     }
   }
 
@@ -173,36 +170,81 @@ export default function SourcePanel({
       {/* ============================================================ */}
       <div className="p-3 bg-dark-950/80 border-b border-slate-800 space-y-2">
         <div className="flex items-center justify-between gap-2">
-          {/* Workspace Switcher & Name Click-to-Edit */}
+          {/* Workspace Switcher & In-Workspace Edit */}
           <div className="relative flex-1 min-w-0" ref={dropdownRef}>
-            <button
-              type="button"
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="w-full px-2.5 py-1.5 bg-dark-850 hover:bg-slate-800 text-slate-200 border border-slate-700/80 rounded-xl text-xs font-medium flex items-center justify-between gap-1.5 transition-all shadow-sm"
-              title="Click to open workspaces or edit workspace name"
-            >
-              <div className="flex items-center gap-2 truncate">
-                <span className={`w-2 h-2 rounded-full shrink-0 ${getWorkspaceColorDot(activeWorkspace?.color)}`} />
-                <span className="truncate font-semibold">{activeWorkspace?.name || 'Workspace'}</span>
-                {pinnedIds.includes(activeWorkspace?.id) && (
-                  <Pin className="w-3 h-3 text-amber-400 fill-amber-400 rotate-45 shrink-0" />
-                )}
+            {isEditingActiveWs ? (
+              <div className="flex items-center gap-1.5 p-1 bg-dark-850 border border-brand-500 rounded-xl shadow-sm">
+                <input
+                  type="text"
+                  value={activeWsName}
+                  onChange={(e) => setActiveWsName(e.target.value)}
+                  onKeyDown={handleActiveWsKeyDown}
+                  className="w-full px-2 py-1 bg-dark-950 rounded-lg text-xs text-white focus:outline-none"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveActiveWs}
+                  className="p-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shrink-0 transition-colors"
+                  title="Save workspace name"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditingActiveWs(false);
+                    setActiveWsName(activeWorkspace?.name || '');
+                  }}
+                  className="p-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg shrink-0 transition-colors"
+                  title="Cancel"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            </button>
+            ) : (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="flex-1 min-w-0 px-2.5 py-1.5 bg-dark-850 hover:bg-slate-800 text-slate-200 border border-slate-700/80 rounded-xl text-xs font-medium flex items-center justify-between gap-1.5 transition-all shadow-sm"
+                  title="Click to open workspace list"
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${getWorkspaceColorDot(activeWorkspace?.color)}`} />
+                    <span className="truncate font-semibold">{activeWorkspace?.name || 'Workspace'}</span>
+                    {pinnedIds.includes(activeWorkspace?.id) && (
+                      <Pin className="w-3 h-3 text-amber-400 fill-amber-400 rotate-45 shrink-0" />
+                    )}
+                  </div>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveWsName(activeWorkspace?.name || '');
+                    setIsEditingActiveWs(true);
+                  }}
+                  className="p-1.5 bg-dark-850 hover:bg-slate-800 text-slate-400 hover:text-cyan-400 border border-slate-700/80 rounded-xl transition-all shrink-0"
+                  title="Edit workspace name"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
 
             {/* Dropdown Menu */}
             {isDropdownOpen && (
               <div className="absolute left-0 mt-2 w-72 bg-dark-900 border border-slate-700/80 rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
                 <div className="px-3.5 py-1.5 border-b border-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Select or Edit Workspace
+                  Switch Workspace
                 </div>
 
                 <div className="max-h-60 overflow-y-auto py-1 divide-y divide-slate-800/40">
                   {sortedWorkspaces.map((ws) => {
                     const isSelected = ws.id === activeWorkspaceId;
                     const isPinned = pinnedIds.includes(ws.id);
-                    const isEditing = editingWsId === ws.id;
 
                     return (
                       <div
@@ -211,64 +253,17 @@ export default function SourcePanel({
                           isSelected ? 'bg-brand-500/15 text-white font-semibold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                         }`}
                       >
-                        {isEditing ? (
-                          /* Inline Name Editing Input */
-                          <div className="flex items-center gap-1.5 flex-1 mr-2" onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="text"
-                              value={editWsName}
-                              onChange={(e) => setEditWsName(e.target.value)}
-                              onKeyDown={(e) => handleEditKeyDown(ws.id, e)}
-                              className="w-full px-2 py-1 bg-dark-950 border border-brand-500 rounded text-xs text-white focus:outline-none"
-                              autoFocus
-                            />
-                            <button
-                              type="button"
-                              onClick={(e) => handleSaveEdit(ws.id, e)}
-                              className="p-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded shrink-0"
-                              title="Save name"
-                            >
-                              <Check className="w-3 h-3" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingWsId(null);
-                              }}
-                              className="p-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded shrink-0"
-                              title="Cancel"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ) : (
-                          /* Workspace item row: click name to switch, click name text to edit */
-                          <div
-                            className="flex items-center gap-2 truncate flex-1 cursor-pointer"
-                            onClick={() => {
-                              onSelectWorkspace(ws.id);
-                              setIsDropdownOpen(false);
-                            }}
-                          >
-                            <span className={`w-2 h-2 rounded-full shrink-0 ${getWorkspaceColorDot(ws.color)}`} />
-                            <span
-                              className="truncate hover:underline"
-                              onClick={(e) => handleStartEdit(ws, e)}
-                              title="Click to edit workspace name"
-                            >
-                              {ws.name}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={(e) => handleStartEdit(ws, e)}
-                              className="opacity-0 group-hover:opacity-100 p-0.5 text-slate-500 hover:text-cyan-400 rounded transition-opacity"
-                              title="Rename workspace"
-                            >
-                              <Edit2 className="w-2.5 h-2.5" />
-                            </button>
-                          </div>
-                        )}
+                        {/* Workspace item row: click to switch */}
+                        <div
+                          className="flex items-center gap-2 truncate flex-1 cursor-pointer"
+                          onClick={() => {
+                            onSelectWorkspace(ws.id);
+                            setIsDropdownOpen(false);
+                          }}
+                        >
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${getWorkspaceColorDot(ws.color)}`} />
+                          <span className="truncate">{ws.name}</span>
+                        </div>
 
                         <div className="flex items-center gap-1.5 shrink-0 ml-1">
                           {/* Pin / Unpin Button */}
@@ -287,16 +282,15 @@ export default function SourcePanel({
 
                           {isSelected && <Check className="w-3.5 h-3.5 text-brand-400" />}
 
-                          {ws.id !== 'ws_default' && (
-                            <button
-                              type="button"
-                              onClick={(e) => onDeleteWorkspace(ws.id, e)}
-                              className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-rose-400 rounded transition-opacity"
-                              title="Delete workspace"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          )}
+                          {/* Delete Workspace Button (Available for ALL workspaces) */}
+                          <button
+                            type="button"
+                            onClick={(e) => onDeleteWorkspace(ws.id, e)}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-rose-400 rounded transition-opacity"
+                            title="Delete workspace"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </div>
                     );
