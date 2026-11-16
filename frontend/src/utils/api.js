@@ -202,3 +202,70 @@ export async function deleteExamAttempt(id) {
 
   return await res.json();
 }
+
+// ================= AUTHENTICATION & CANDIDATE ACCESS =================
+export async function authSignup(data) {
+  const res = await fetch(`${API_BASE}/auth/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.message || 'Signup failed');
+  return json;
+}
+
+export async function authLogin(data) {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.message || 'Login failed');
+  return json;
+}
+
+export async function authGoogleLogin(data) {
+  const res = await fetch(`${API_BASE}/auth/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.message || 'Google sign-in failed');
+  return json;
+}
+
+export async function authForgotPassword({ email }) {
+  const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email })
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.message || 'Failed to send OTP');
+  return json;
+}
+
+export async function authVerifyOtp({ email, otp }) {
+  const res = await fetch(`${API_BASE}/auth/verify-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, otp })
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.message || 'Invalid or expired OTP');
+  return json;
+}
+
+export async function authResetPassword({ email, otp, newPassword }) {
+  const res = await fetch(`${API_BASE}/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, otp, newPassword })
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.message || 'Password reset failed');
+  return json;
+}

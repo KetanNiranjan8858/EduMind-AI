@@ -10,6 +10,7 @@ import fileRoutes from './routes/fileRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import workspaceRoutes from './routes/workspaceRoutes.js';
 import historyRoutes from './routes/historyRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 
 dotenv.config();
 
@@ -37,6 +38,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/uploads', express.static(uploadDir));
 
 // API Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/workspaces', workspaceRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/ai', aiRoutes);

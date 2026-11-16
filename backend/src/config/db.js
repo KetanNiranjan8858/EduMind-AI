@@ -16,6 +16,7 @@ if (!fs.existsSync(fallbackDir)) {
 
 // Initial default database structure for fallback
 const initialStore = {
+  users: [],
   workspaces: [
     {
       id: 'ws_default',
@@ -53,6 +54,7 @@ export function readFallback() {
   try {
     const raw = fs.readFileSync(fallbackFile, 'utf8');
     const data = JSON.parse(raw);
+    if (!data.users) data.users = [];
     if (!data.workspaces || data.workspaces.length === 0) {
       data.workspaces = initialStore.workspaces;
       writeFallback(data);
@@ -197,6 +199,24 @@ export async function initDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
+    // 6. Users & Authentication (Password protected + OTP)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR(64) PRIMARY KEY,
+        name VARCHAR(150) NOT NULL,
+        email VARCHAR(150) NOT NULL UNIQUE,
+        password_hash TEXT,
+        candidate_id VARCHAR(50),
+        target_exam VARCHAR(100) DEFAULT 'GATE CS / IT',
+        auth_provider VARCHAR(50) DEFAULT 'local',
+        otp_code VARCHAR(10),
+        otp_expires_at TIMESTAMP NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_user_email (email)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
     useFallback = false;
     console.log(`[EduMind DB] Connected to MySQL (${database}) with complete relational schema.`);
   } catch (err) {
@@ -225,6 +245,65 @@ export async function query(sql, params = []) {
   // Resilient JSON-based execution engine
   const store = readFallback();
   const lowerSql = sql.trim().toLowerCase();
+
+  // USERS & AUTHENTICATION
+  if (lowerSql.startsWith('select * from users where email =')) {
+    const email = (params[0] || '').trim().toLowerCase();
+    const found = (store.users || []).find(u => u.email.toLowerCase() === email);
+    return found ? [found] : [];
+  }
+  if (lowerSql.startsWith('select * from users where id =')) {
+    const id = params[0];
+    const found = (store.users || []).find(u => u.id === id);
+    return found ? [found] : [];
+  }
+  if (lowerSql.startsWith('insert into users')) {
+    const [id, name, email, password_hash, candidate_id, target_exam, auth_provider] = params;
+    const userRecord = {
+      id,
+      name,
+      email: (email || '').trim().toLowerCase(),
+      password_hash: password_hash || null,
+      candidate_id: candidate_id || null,
+      target_exam: target_exam || 'GATE CS / IT',
+      auth_provider: auth_provider || 'local',
+      otp_code: null,
+      otp_expires_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    if (!store.users) store.users = [];
+    store.users.push(userRecord);
+    writeFallback(store);
+    return { affectedRows: 1, insertId: id };
+  }
+  if (lowerSql.includes('update users set otp_code = ?, otp_expires_at = ? where email = ?')) {
+    const [otp_code, otp_expires_at, email] = params;
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const user = (store.users || []).find(u => u.email.toLowerCase() === cleanEmail);
+    if (user) {
+      user.otp_code = otp_code;
+      user.otp_expires_at = otp_expires_at;
+      user.updated_at = new Date().toISOString();
+      writeFallback(store);
+      return { affectedRows: 1 };
+    }
+    return { affectedRows: 0 };
+  }
+  if (lowerSql.includes('update users set password_hash = ?, otp_code = null, otp_expires_at = null where email = ?')) {
+    const [password_hash, email] = params;
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const user = (store.users || []).find(u => u.email.toLowerCase() === cleanEmail);
+    if (user) {
+      user.password_hash = password_hash;
+      user.otp_code = null;
+      user.otp_expires_at = null;
+      user.updated_at = new Date().toISOString();
+      writeFallback(store);
+      return { affectedRows: 1 };
+    }
+    return { affectedRows: 0 };
+  }
 
   // WORKSPACES
   if (lowerSql.startsWith('select * from workspaces')) {
