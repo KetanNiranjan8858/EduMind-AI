@@ -8,6 +8,8 @@ import { fileURLToPath } from 'url';
 import db from './config/db.js';
 import fileRoutes from './routes/fileRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
+import workspaceRoutes from './routes/workspaceRoutes.js';
+import historyRoutes from './routes/historyRoutes.js';
 
 dotenv.config();
 
@@ -35,8 +37,10 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/uploads', express.static(uploadDir));
 
 // API Routes
+app.use('/api/workspaces', workspaceRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/history', historyRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

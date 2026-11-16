@@ -8,27 +8,49 @@ import {
   FileText,
   AlertCircle,
   HelpCircle,
-  BookOpen
+  BookOpen,
+  Loader2
 } from 'lucide-react';
-import { sendChatMessage } from '../utils/api';
+import { sendChatMessage, fetchChatHistory, clearChatHistory } from '../utils/api';
 
-export default function ChatHub({ selectedSources = [], allSources = [] }) {
-  const [messages, setMessages] = useState([
-    {
-      id: 'welcome',
-      sender: 'ai',
-      text: `### Welcome to EduMind AI Workspace 🎓
+export default function ChatHub({ selectedSources = [], allSources = [], workspaceId = 'ws_default', workspaceName = 'Workspace' }) {
+  const defaultWelcome = {
+    id: 'welcome',
+    sender: 'ai',
+    text: `### Welcome to ${workspaceName} 🎓
 
 This central workspace allows you to converse with Google Gemini 2.5 Flash grounded strictly in your study materials.
 
 - **Select sources** from the left panel to constrain AI answers.
 - Ask for formula derivations, concept summaries, or practice explanations.
-- Set difficulty and click **Generate Assessment** on the right panel to launch a GATE/TCS NQT style CBT exam.`
-    }
-  ]);
+- Choose a difficulty and click **Generate Assessment** to create exams.`
+  };
+
+  const [messages, setMessages] = useState([defaultWelcome]);
   const [inputQuery, setInputQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const messagesEndRef = useRef(null);
+
+  // Load chat history when workspace changes
+  useEffect(() => {
+    async function loadHistory() {
+      try {
+        setLoadingHistory(true);
+        const res = await fetchChatHistory(workspaceId);
+        if (res.messages && res.messages.length > 0) {
+          setMessages(res.messages);
+        } else {
+          setMessages([defaultWelcome]);
+        }
+      } catch (err) {
+        setMessages([defaultWelcome]);
+      } finally {
+        setLoadingHistory(false);
+      }
+    }
+    loadHistory();
+  }, [workspaceId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -53,7 +75,8 @@ This central workspace allows you to converse with Google Gemini 2.5 Flash groun
       const res = await sendChatMessage({
         sourceIds,
         messages: messages.map((m) => ({ sender: m.sender, text: m.text })),
-        userQuery: text
+        userQuery: text,
+        workspaceId
       });
 
       const aiMsg = {
@@ -83,20 +106,26 @@ This central workspace allows you to converse with Google Gemini 2.5 Flash groun
     }
   }
 
-  function clearHistory() {
-    setMessages([
-      {
-        id: 'cleared',
-        sender: 'ai',
-        text: 'Workspace cleared. How can I help you study next?'
-      }
-    ]);
+  async function handleClearHistory() {
+    if (!window.confirm('Clear all conversation history in this workspace?')) return;
+    try {
+      await clearChatHistory(workspaceId);
+      setMessages([
+        {
+          id: `cleared-${Date.now()}`,
+          sender: 'ai',
+          text: `Workspace conversation cleared for **${workspaceName}**. How can I help you study next?`
+        }
+      ]);
+    } catch (err) {
+      alert('Could not clear chat history: ' + err.message);
+    }
   }
 
   const promptSuggestions = [
     'Summarize key principles from the selected notes',
     'List all critical formulas and their definitions',
-    'What are the typical GATE-level tricky questions on this?',
+    'What are the common tricky exam questions on this?',
     'Explain the core mechanism step-by-step'
   ];
 
@@ -113,9 +142,8 @@ This central workspace allows you to converse with Google Gemini 2.5 Flash groun
               <h2 className="text-sm font-bold text-slate-100">
                 Central Study Workspace
               </h2>
-              <span className="px-2 py-0.5 text-[10px] font-medium bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Gemini 2.5 Flash
+              <span className="px-2 py-0.5 text-[10px] font-semibold bg-dark-950 text-brand-300 rounded-md border border-brand-500/20">
+                {workspaceName}
               </span>
             </div>
             <p className="text-[11px] text-slate-400">
@@ -138,7 +166,7 @@ This central workspace allows you to converse with Google Gemini 2.5 Flash groun
         </div>
 
         <button
-          onClick={clearHistory}
+          onClick={handleClearHistory}
           className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors text-xs flex items-center gap-1"
           title="Clear Chat History"
         >
@@ -148,34 +176,41 @@ This central workspace allows you to converse with Google Gemini 2.5 Flash groun
 
       {/* Messages Feed */}
       <div className="flex-1 overflow-y-auto p-6 space-y-5">
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex gap-3.5 max-w-3xl ${
-              msg.sender === 'user' ? 'ml-auto flex-row-reverse' : ''
-            }`}
-          >
-            <div
-              className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs font-semibold ${
-                msg.sender === 'user'
-                  ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20'
-                  : 'bg-dark-850 text-brand-400 border border-slate-700/80'
-              }`}
-            >
-              {msg.sender === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-            </div>
-
-            <div
-              className={`p-4 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm ${
-                msg.sender === 'user'
-                  ? 'bg-brand-600 text-white rounded-tr-none'
-                  : 'bg-dark-900 border border-slate-800/90 text-slate-200 rounded-tl-none prose-invert font-sans'
-              }`}
-            >
-              <div className="whitespace-pre-wrap">{msg.text}</div>
-            </div>
+        {loadingHistory ? (
+          <div className="flex items-center justify-center h-48 text-slate-500 text-xs gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-brand-400" />
+            <span>Loading workspace chat...</span>
           </div>
-        ))}
+        ) : (
+          messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`flex gap-3.5 max-w-3xl ${
+                msg.sender === 'user' ? 'ml-auto flex-row-reverse' : ''
+              }`}
+            >
+              <div
+                className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs font-semibold ${
+                  msg.sender === 'user'
+                    ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20'
+                    : 'bg-dark-850 text-brand-400 border border-slate-700/80'
+                }`}
+              >
+                {msg.sender === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+              </div>
+
+              <div
+                className={`p-4 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm ${
+                  msg.sender === 'user'
+                    ? 'bg-brand-600 text-white rounded-tr-none'
+                    : 'bg-dark-900 border border-slate-800/90 text-slate-200 rounded-tl-none prose-invert font-sans'
+                }`}
+              >
+                <div className="whitespace-pre-wrap">{msg.text}</div>
+              </div>
+            </div>
+          ))
+        )}
 
         {loading && (
           <div className="flex gap-3.5 max-w-3xl">
@@ -215,8 +250,8 @@ This central workspace allows you to converse with Google Gemini 2.5 Flash groun
             onKeyDown={handleKeyDown}
             placeholder={
               selectedSources.length > 0
-                ? `Ask anything about ${selectedSources.length} selected source(s)... (Shift + Enter for newline)`
-                : 'Ask a question or select files from the left panel...'
+                ? `Ask anything about ${selectedSources.length} selected source(s) in ${workspaceName}... (Shift + Enter for newline)`
+                : `Ask a question or select files from the left panel...`
             }
             rows={2}
             className="w-full pl-4 pr-12 py-3 bg-dark-950 border border-slate-800 rounded-xl text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-brand-500 text-xs sm:text-sm font-sans transition-colors resize-none"

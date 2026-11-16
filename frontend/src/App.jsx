@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Brain,
-  Sparkles,
-  Server,
   Layers,
-  Play,
+  History,
+  ChevronDown,
+  Plus,
+  Trash2,
+  Check,
   RotateCcw,
-  CheckCircle2,
-  AlertTriangle,
-  Award
+  Sparkles
 } from 'lucide-react';
 
 import SourcePanel from './components/SourcePanel';
@@ -16,17 +16,25 @@ import ChatHub from './components/ChatHub';
 import AIStudio from './components/AIStudio';
 import NoteModal from './components/NoteModal';
 import SourcePreviewModal from './components/SourcePreviewModal';
+import WorkspaceModal from './components/WorkspaceModal';
+import HistoryModal from './components/HistoryModal';
 import ExamView from './components/ExamView';
 import AnalyticsView from './components/AnalyticsView';
 
 import {
+  fetchWorkspaces,
+  createWorkspace,
+  deleteWorkspace,
   fetchSources,
   uploadFiles,
   createNote,
   deleteSource,
   generateQuiz,
-  fetchHealth
+  fetchExamHistory,
+  saveExamAttempt,
+  deleteExamAttempt
 } from './utils/api';
+import { calculateScore } from './utils/helpers';
 
 export default function App() {
   // Mode: 'studio' | 'exam' | 'analytics'
@@ -38,21 +46,32 @@ export default function App() {
     return 'studio';
   });
 
+  // Workspace State
+  const [workspaces, setWorkspaces] = useState([]);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState(() => {
+    return localStorage.getItem('edumind_active_workspace_id') || 'ws_default';
+  });
+  const [isWorkspaceDropdownOpen, setIsWorkspaceDropdownOpen] = useState(false);
+  const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Active Workspace Data
   const [sources, setSources] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [loadingSources, setLoadingSources] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [generatingQuiz, setGeneratingQuiz] = useState(false);
-  const [serverHealth, setServerHealth] = useState(null);
+  const [examHistory, setExamHistory] = useState([]);
 
   // Modals
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [previewSource, setPreviewSource] = useState(null);
 
-  // Recent Quizzes in Studio (Persisted in localStorage)
+  // Recent Quizzes in Studio (Persisted per workspace in localStorage)
   const [recentQuizzes, setRecentQuizzes] = useState(() => {
     try {
-      const saved = localStorage.getItem('edumind_recent_quizzes');
+      const saved = localStorage.getItem(`edumind_recent_quizzes_${activeWorkspaceId}`);
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -79,6 +98,17 @@ export default function App() {
     }
   });
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsWorkspaceDropdownOpen(false);
+      }
+    }
+    window.addEventListener('mousedown', handleClickOutside);
+    return () => window.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Listen for Cross-Tab localStorage handoff events
   useEffect(() => {
     function handleStorageChange(e) {
@@ -97,46 +127,98 @@ export default function App() {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Sync recentQuizzes to localStorage
+  // Load Workspaces on mount
   useEffect(() => {
-    try {
-      localStorage.setItem('edumind_recent_quizzes', JSON.stringify(recentQuizzes));
-    } catch {}
-  }, [recentQuizzes]);
-
-  // Load Initial Data
-  useEffect(() => {
-    loadSources();
-    checkBackendHealth();
+    loadWorkspaces();
   }, []);
 
-  async function checkBackendHealth() {
-    const health = await fetchHealth();
-    setServerHealth(health);
-  }
+  // When activeWorkspaceId changes, load sources and history
+  useEffect(() => {
+    localStorage.setItem('edumind_active_workspace_id', activeWorkspaceId);
+    loadWorkspaceData(activeWorkspaceId);
 
-  async function loadSources() {
+    // Restore recent quizzes for this workspace
     try {
-      setLoadingSources(true);
-      const res = await fetchSources();
-      if (res.sources) {
-        setSources(res.sources);
-        // By default select all if none selected yet
-        if (selectedIds.length === 0 && res.sources.length > 0) {
-          setSelectedIds(res.sources.map((s) => s.id));
+      const saved = localStorage.getItem(`edumind_recent_quizzes_${activeWorkspaceId}`);
+      setRecentQuizzes(saved ? JSON.parse(saved) : []);
+    } catch {
+      setRecentQuizzes([]);
+    }
+  }, [activeWorkspaceId]);
+
+  // Sync recentQuizzes to workspace key
+  useEffect(() => {
+    try {
+      localStorage.setItem(`edumind_recent_quizzes_${activeWorkspaceId}`, JSON.stringify(recentQuizzes));
+    } catch {}
+  }, [recentQuizzes, activeWorkspaceId]);
+
+  async function loadWorkspaces() {
+    try {
+      const res = await fetchWorkspaces();
+      if (res.workspaces && res.workspaces.length > 0) {
+        setWorkspaces(res.workspaces);
+        if (!res.workspaces.some(w => w.id === activeWorkspaceId)) {
+          setActiveWorkspaceId(res.workspaces[0].id);
         }
       }
     } catch (err) {
-      console.warn('Backend sources fetch failed:', err.message);
+      console.warn('Could not load workspaces:', err.message);
+    }
+  }
+
+  async function loadWorkspaceData(wsId) {
+    try {
+      setLoadingSources(true);
+      const [srcRes, histRes] = await Promise.all([
+        fetchSources(wsId),
+        fetchExamHistory(wsId).catch(() => ({ history: [] }))
+      ]);
+
+      if (srcRes.sources) {
+        setSources(srcRes.sources);
+        setSelectedIds(srcRes.sources.map(s => s.id));
+      } else {
+        setSources([]);
+        setSelectedIds([]);
+      }
+
+      if (histRes.history) {
+        setExamHistory(histRes.history);
+      }
+    } catch (err) {
+      console.warn('Error loading workspace data:', err.message);
     } finally {
       setLoadingSources(false);
+    }
+  }
+
+  async function handleCreateWorkspace(data) {
+    const res = await createWorkspace(data);
+    if (res.workspace) {
+      setWorkspaces(prev => [...prev, res.workspace]);
+      setActiveWorkspaceId(res.workspace.id);
+    }
+  }
+
+  async function handleDeleteWorkspace(id, e) {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this workspace and all its data?')) return;
+    try {
+      await deleteWorkspace(id);
+      setWorkspaces(prev => prev.filter(w => w.id !== id));
+      if (activeWorkspaceId === id) {
+        setActiveWorkspaceId('ws_default');
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to delete workspace');
     }
   }
 
   async function handleUploadFiles(fileList) {
     try {
       setUploading(true);
-      const res = await uploadFiles(fileList);
+      const res = await uploadFiles(fileList, activeWorkspaceId);
       if (res.files) {
         setSources((prev) => [...res.files, ...prev]);
         setSelectedIds((prev) => [...res.files.map((f) => f.id), ...prev]);
@@ -149,7 +231,7 @@ export default function App() {
   }
 
   async function handleCreateNote({ title, content }) {
-    const res = await createNote({ title, content });
+    const res = await createNote({ title, content, workspaceId: activeWorkspaceId });
     if (res.note) {
       setSources((prev) => [res.note, ...prev]);
       setSelectedIds((prev) => [res.note.id, ...prev]);
@@ -187,7 +269,8 @@ export default function App() {
       const res = await generateQuiz({
         sourceIds: selectedIds,
         difficulty,
-        questionCount
+        questionCount,
+        workspaceId: activeWorkspaceId
       });
 
       if (res.quiz) {
@@ -206,11 +289,10 @@ export default function App() {
       localStorage.setItem('edumind_active_exam', JSON.stringify(quiz));
       setActiveQuiz(quiz);
 
-      // Attempt to open in brand new dedicated CBT tab
+      // Attempt to open in dedicated tab
       const examUrl = `${window.location.origin}${window.location.pathname}?mode=cbt`;
       const newTab = window.open(examUrl, '_blank');
 
-      // If browser blocked popup, smoothly transition in current tab
       if (!newTab || newTab.closed || typeof newTab.closed === 'undefined') {
         setViewMode('exam');
       }
@@ -225,16 +307,40 @@ export default function App() {
     setRecentQuizzes((prev) => prev.filter((_, idx) => idx !== index));
   }
 
-  function handleExamSubmit(submissionData) {
+  async function handleExamSubmit(submissionData) {
     try {
       localStorage.setItem('edumind_exam_results', JSON.stringify(submissionData));
     } catch {}
+
+    // Calculate score metrics
+    const stats = calculateScore(
+      submissionData.quiz.questions,
+      submissionData.userAnswers,
+      submissionData.questionTimes
+    );
+
+    // Persist attempt in DB history
+    try {
+      await saveExamAttempt({
+        workspaceId: activeWorkspaceId,
+        quiz: submissionData.quiz,
+        userAnswers: submissionData.userAnswers,
+        questionTimes: submissionData.questionTimes,
+        timeTakenSeconds: submissionData.timeTakenSeconds,
+        stats
+      });
+      // Refresh history for active workspace
+      const histRes = await fetchExamHistory(activeWorkspaceId);
+      if (histRes.history) setExamHistory(histRes.history);
+    } catch (err) {
+      console.warn('Failed to persist exam attempt to DB:', err);
+    }
+
     setExamResultData(submissionData);
     setViewMode('analytics');
   }
 
   function handleReturnToStudio() {
-    // If in standalone CBT tab, close or return to home
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('mode') === 'cbt') {
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -251,79 +357,39 @@ export default function App() {
     }
   }
 
-  // Sample quick test paper for instant evaluation
-  function handleLaunchSamplePaper() {
-    const sampleQuiz = {
-      quizTitle: 'Operating Systems & Architecture Practice Drill',
-      difficulty: 'Hard',
-      totalQuestions: 5,
-      questions: [
-        {
-          id: 1,
-          question: 'Consider a 4-way set-associative cache with 64 KB capacity and 32-byte block size on a 32-bit physical address machine. How many bits are required for the TAG field?',
-          options: [
-            'A. 18 bits',
-            'B. 19 bits',
-            'C. 20 bits',
-            'D. 21 bits'
-          ],
-          correctAnswer: 'A',
-          explanation: 'Number of lines = 64KB / 32B = 2048. Number of sets = 2048 / 4 = 512 = 2^9. Offset = log2(32) = 5 bits. Tag = 32 - 9 - 5 = 18 bits.'
-        },
-        {
-          id: 2,
-          question: 'In a virtual memory system using FIFO page replacement with 3 page frames, which of the following reference strings demonstrates Belady\'s Anomaly?',
-          options: [
-            'A. 1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5',
-            'B. 7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 2',
-            'C. 1, 2, 3, 4, 2, 1, 5, 6, 2, 1, 2, 3, 7, 6',
-            'D. 2, 3, 2, 1, 5, 2, 4, 5, 3, 2, 5, 2'
-          ],
-          correctAnswer: 'A',
-          explanation: 'The reference string 1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5 yields 9 page faults with 3 frames, but 10 page faults with 4 frames under FIFO.'
-        },
-        {
-          id: 3,
-          question: 'Which scheduling algorithm is strictly provably optimal for minimizing average waiting time for a given set of stationary processes?',
-          options: [
-            'A. First-Come, First-Served (FCFS)',
-            'B. Round Robin with time quantum = 2ms',
-            'C. Shortest Job First (SJF / SRTF)',
-            'D. Highest Response Ratio Next (HRRN)'
-          ],
-          correctAnswer: 'C',
-          explanation: 'Shortest Job First (SJF) is mathematically optimal because moving a shorter job ahead of a longer one decreases the waiting time of the shorter job more than it increases that of the longer one.'
-        },
-        {
-          id: 4,
-          question: 'In Peterson\'s solution for mutual exclusion between two processes P0 and P1, what prevents deadlock?',
-          options: [
-            'A. TestAndSet hardware instructions',
-            'B. The turn variable guarantees that only one process can enter the critical section when both flag[0] and flag[1] are true',
-            'C. Non-preemption of timer interrupts',
-            'D. A semaphore initialized to 0'
-          ],
-          correctAnswer: 'B',
-          explanation: 'The turn variable breaks symmetry. If both set their flag to true, turn will hold either 0 or 1, allowing exactly one process to bypass the while loop.'
-        },
-        {
-          id: 5,
-          question: 'What is the maximum number of inodes allocated in an ext2 filesystem with 4KB block size and a 16-bit block pointer depth?',
-          options: [
-            'A. Dynamically bounded by superblock metadata descriptor tables during mkfs',
-            'B. Exactly 2^16 inodes per partition',
-            'C. Unlimited using extent trees',
-            'D. 1024 inodes per group descriptor block'
-          ],
-          correctAnswer: 'A',
-          explanation: 'In ext2/ext3, the number of inodes is fixed at filesystem creation time (mkfs) based on the inode ratio in the superblock and cylinder group descriptors.'
-        }
-      ],
-      generatedAt: new Date().toISOString()
+  // Review a past exam attempt from History
+  function handleReviewPastAttempt(attempt) {
+    const data = {
+      quiz: attempt.quiz,
+      userAnswers: attempt.userAnswers,
+      questionTimes: attempt.questionTimes,
+      timeTakenSeconds: attempt.time_taken_seconds
     };
-
-    handleLaunchExam(sampleQuiz);
+    setExamResultData(data);
+    setViewMode('analytics');
   }
+
+  // Retake a past exam from History
+  function handleRetakePastAttempt(attempt) {
+    setActiveQuiz(attempt.quiz);
+    handleLaunchExam(attempt.quiz);
+  }
+
+  async function handleDeletePastAttempt(id) {
+    if (!window.confirm('Delete this exam attempt record?')) return;
+    try {
+      await deleteExamAttempt(id);
+      setExamHistory(prev => prev.filter(a => a.id !== id));
+    } catch (err) {
+      alert('Failed to delete attempt: ' + err.message);
+    }
+  }
+
+  const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId) || workspaces[0] || {
+    id: 'ws_default',
+    name: 'General Study Workspace',
+    color: 'indigo'
+  };
 
   // Route 1: The CBT Exam View (Standalone Tab or mode)
   if (viewMode === 'exam') {
@@ -352,52 +418,125 @@ export default function App() {
 
   const selectedSourcesList = sources.filter((s) => selectedIds.includes(s.id));
 
+  // Helper color dot for workspace
+  function getWorkspaceColorDot(color) {
+    switch (color) {
+      case 'emerald': return 'bg-emerald-400';
+      case 'amber': return 'bg-amber-400';
+      case 'rose': return 'bg-rose-400';
+      case 'cyan': return 'bg-cyan-400';
+      case 'indigo':
+      default:
+        return 'bg-indigo-400';
+    }
+  }
+
   // Route 3: Central Studio (3-Panel Layout)
   return (
     <div className="h-screen flex flex-col bg-dark-950 text-slate-100 overflow-hidden font-sans">
-      {/* Top Application Bar */}
-      <header className="h-14 bg-dark-900 border-b border-slate-800 px-5 flex items-center justify-between shrink-0 shadow-sm">
+      {/* Top Application Bar (Clean & Professional) */}
+      <header className="h-14 bg-dark-900 border-b border-slate-800 px-5 flex items-center justify-between shrink-0 shadow-sm z-30">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-600 to-rose-600 flex items-center justify-center text-white shadow-md shadow-brand-500/25">
             <Brain className="w-5 h-5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-base tracking-tight text-white">
-                EduMind <span className="text-brand-400">AI</span>
-              </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-500/10 text-brand-300 border border-brand-500/20">
-                LMS & CBT Engine
-              </span>
-            </div>
+          <div className="flex items-center gap-2">
+            <span className="font-extrabold text-base tracking-tight text-white">
+              EduMind <span className="text-brand-400">AI</span>
+            </span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-500/10 text-brand-300 border border-brand-500/20">
+              LMS & CBT Engine
+            </span>
           </div>
         </div>
 
-        {/* Global Controls & Status */}
+        {/* Global Controls: Workspace Switcher & History */}
         <div className="flex items-center gap-3">
-          {/* Quick Test Demo Button */}
-          <button
-            onClick={handleLaunchSamplePaper}
-            className="px-3 py-1.5 bg-gradient-to-r from-brand-600/20 to-indigo-600/20 hover:from-brand-600/40 hover:to-indigo-600/40 text-brand-300 border border-brand-500/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all"
-            title="Try a 5-question practice CBT paper immediately"
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>Try Demo CBT Exam</span>
-          </button>
+          {/* Workspace Switcher Dropdown */}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setIsWorkspaceDropdownOpen(!isWorkspaceDropdownOpen)}
+              className="px-3 py-1.5 bg-dark-850 hover:bg-slate-800 text-slate-200 border border-slate-700/80 rounded-xl text-xs font-medium flex items-center gap-2 transition-all shadow-sm"
+              title="Switch Workspace"
+            >
+              <span className={`w-2 h-2 rounded-full ${getWorkspaceColorDot(activeWorkspace.color)}`} />
+              <span className="max-w-[150px] sm:max-w-[200px] truncate">{activeWorkspace.name}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            </button>
 
-          {/* Backend Status indicator */}
-          <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-dark-950 border border-slate-800 text-[11px] font-mono text-slate-400">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                serverHealth?.status === 'healthy' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
-              }`}
-            />
-            <span>
-              {serverHealth?.status === 'healthy'
-                ? `API Online ${serverHealth.geminiConfigured ? '(Gemini 2.5 Active)' : '(Demo Mode)'}`
-                : 'Server Offline'}
-            </span>
+            {/* Dropdown Menu */}
+            {isWorkspaceDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-72 bg-dark-900 border border-slate-700/80 rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-3.5 py-1.5 border-b border-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Select Workspace
+                </div>
+
+                <div className="max-h-60 overflow-y-auto py-1">
+                  {workspaces.map((ws) => {
+                    const isSelected = ws.id === activeWorkspaceId;
+                    return (
+                      <div
+                        key={ws.id}
+                        onClick={() => {
+                          setActiveWorkspaceId(ws.id);
+                          setIsWorkspaceDropdownOpen(false);
+                        }}
+                        className={`group px-3 py-2 text-xs flex items-center justify-between cursor-pointer transition-colors ${
+                          isSelected ? 'bg-brand-500/15 text-white font-semibold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${getWorkspaceColorDot(ws.color)}`} />
+                          <span className="truncate">{ws.name}</span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {isSelected && <Check className="w-3.5 h-3.5 text-brand-400" />}
+                          {ws.id !== 'ws_default' && (
+                            <button
+                              onClick={(e) => handleDeleteWorkspace(ws.id, e)}
+                              className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-rose-400 rounded transition-opacity"
+                              title="Delete workspace"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-1 border-t border-slate-800">
+                  <button
+                    onClick={() => {
+                      setIsWorkspaceDropdownOpen(false);
+                      setIsWorkspaceModalOpen(true);
+                    }}
+                    className="w-full px-3 py-2 text-xs text-brand-400 hover:text-brand-300 hover:bg-brand-500/10 flex items-center gap-2 transition-colors font-medium"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Create New Workspace</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Exam History Button */}
+          <button
+            onClick={() => setIsHistoryModalOpen(true)}
+            className="px-3 py-1.5 bg-dark-850 hover:bg-slate-800 text-slate-200 border border-slate-700/80 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+            title="View completed exam history and past scores"
+          >
+            <History className="w-3.5 h-3.5 text-brand-400" />
+            <span>History</span>
+            {examHistory.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-brand-500/20 text-brand-300 font-mono text-[10px] border border-brand-500/30">
+                {examHistory.length}
+              </span>
+            )}
+          </button>
         </div>
       </header>
 
@@ -422,7 +561,12 @@ export default function App() {
 
         {/* Center Panel: Central Chat Hub / Study Workspace */}
         <main className="flex-1 h-full min-w-0">
-          <ChatHub selectedSources={selectedSourcesList} allSources={sources} />
+          <ChatHub
+            selectedSources={selectedSourcesList}
+            allSources={sources}
+            workspaceId={activeWorkspaceId}
+            workspaceName={activeWorkspace.name}
+          />
         </main>
 
         {/* Right Panel: The AI Studio & Recent Outputs (340px) */}
@@ -449,6 +593,24 @@ export default function App() {
       <SourcePreviewModal
         source={previewSource}
         onClose={() => setPreviewSource(null)}
+      />
+
+      {/* Workspace Creation Modal */}
+      <WorkspaceModal
+        isOpen={isWorkspaceModalOpen}
+        onClose={() => setIsWorkspaceModalOpen(false)}
+        onCreated={handleCreateWorkspace}
+      />
+
+      {/* Exam History Modal */}
+      <HistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        history={examHistory}
+        activeWorkspace={activeWorkspace}
+        onReviewAttempt={handleReviewPastAttempt}
+        onRetakeAttempt={handleRetakePastAttempt}
+        onDeleteAttempt={handleDeletePastAttempt}
       />
     </div>
   );

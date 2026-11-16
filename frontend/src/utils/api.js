@@ -9,14 +9,48 @@ export async function fetchHealth() {
   }
 }
 
-export async function fetchSources() {
-  const res = await fetch(`${API_BASE}/files`);
+// ================= WORKSPACES =================
+export async function fetchWorkspaces() {
+  const res = await fetch(`${API_BASE}/workspaces`);
+  if (!res.ok) throw new Error('Failed to fetch workspaces');
+  return await res.json();
+}
+
+export async function createWorkspace({ name, description, color, icon }) {
+  const res = await fetch(`${API_BASE}/workspaces`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, description, color, icon })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Failed to create workspace');
+  }
+  return await res.json();
+}
+
+export async function deleteWorkspace(id) {
+  const res = await fetch(`${API_BASE}/workspaces/${id}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Failed to delete workspace');
+  }
+  return await res.json();
+}
+
+// ================= SOURCES =================
+export async function fetchSources(workspaceId) {
+  const url = workspaceId ? `${API_BASE}/files?workspaceId=${workspaceId}` : `${API_BASE}/files`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to fetch sources');
   return await res.json();
 }
 
-export async function uploadFiles(fileList) {
+export async function uploadFiles(fileList, workspaceId = 'ws_default') {
   const formData = new FormData();
+  formData.append('workspaceId', workspaceId);
   for (let i = 0; i < fileList.length; i++) {
     formData.append('files', fileList[i]);
   }
@@ -34,11 +68,11 @@ export async function uploadFiles(fileList) {
   return await res.json();
 }
 
-export async function createNote({ title, content }) {
+export async function createNote({ title, content, workspaceId = 'ws_default' }) {
   const res = await fetch(`${API_BASE}/files/note`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, content })
+    body: JSON.stringify({ title, content, workspaceId })
   });
 
   if (!res.ok) {
@@ -62,11 +96,12 @@ export async function deleteSource(id) {
   return await res.json();
 }
 
-export async function generateQuiz({ sourceIds, difficulty, questionCount, customTopic }) {
+// ================= AI & CHAT =================
+export async function generateQuiz({ sourceIds, difficulty, questionCount, workspaceId = 'ws_default' }) {
   const res = await fetch(`${API_BASE}/ai/generate-quiz`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sourceIds, difficulty, questionCount, customTopic })
+    body: JSON.stringify({ sourceIds, difficulty, questionCount, workspaceId })
   });
 
   if (!res.ok) {
@@ -77,16 +112,79 @@ export async function generateQuiz({ sourceIds, difficulty, questionCount, custo
   return await res.json();
 }
 
-export async function sendChatMessage({ sourceIds, messages, userQuery }) {
+export async function sendChatMessage({ sourceIds, messages, userQuery, workspaceId = 'ws_default' }) {
   const res = await fetch(`${API_BASE}/ai/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sourceIds, messages, userQuery })
+    body: JSON.stringify({ sourceIds, messages, userQuery, workspaceId })
   });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || 'Chat request failed');
+  }
+
+  return await res.json();
+}
+
+export async function fetchChatHistory(workspaceId = 'ws_default') {
+  const res = await fetch(`${API_BASE}/ai/chat-history?workspaceId=${workspaceId}`);
+  if (!res.ok) throw new Error('Failed to fetch chat history');
+  return await res.json();
+}
+
+export async function clearChatHistory(workspaceId = 'ws_default') {
+  const res = await fetch(`${API_BASE}/ai/chat-history?workspaceId=${workspaceId}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) throw new Error('Failed to clear chat history');
+  return await res.json();
+}
+
+// ================= EXAM HISTORY =================
+export async function fetchExamHistory(workspaceId = 'ws_default') {
+  const res = await fetch(`${API_BASE}/history?workspaceId=${workspaceId}`);
+  if (!res.ok) throw new Error('Failed to fetch exam history');
+  return await res.json();
+}
+
+export async function saveExamAttempt({
+  workspaceId = 'ws_default',
+  quiz,
+  userAnswers,
+  questionTimes,
+  timeTakenSeconds,
+  stats
+}) {
+  const res = await fetch(`${API_BASE}/history`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      workspaceId,
+      quiz,
+      userAnswers,
+      questionTimes,
+      timeTakenSeconds,
+      stats
+    })
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Failed to save exam history');
+  }
+
+  return await res.json();
+}
+
+export async function deleteExamAttempt(id) {
+  const res = await fetch(`${API_BASE}/history/${id}`, {
+    method: 'DELETE'
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Failed to delete exam history record');
   }
 
   return await res.json();

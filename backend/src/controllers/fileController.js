@@ -13,7 +13,7 @@ function determineFileType(mimeType, originalName) {
 }
 
 /**
- * Handle multi-modal file uploads
+ * Handle multi-modal file uploads per workspace
  */
 export async function uploadFiles(req, res) {
   try {
@@ -21,6 +21,7 @@ export async function uploadFiles(req, res) {
       return res.status(400).json({ success: false, message: 'No files were uploaded.' });
     }
 
+    const workspaceId = req.body.workspaceId || 'ws_default';
     const savedRecords = [];
 
     for (const file of req.files) {
@@ -29,10 +30,11 @@ export async function uploadFiles(req, res) {
       const relativePath = path.relative(process.cwd(), file.path).replace(/\\/g, '/');
 
       await db.query(
-        `INSERT INTO sources (id, original_name, filename, file_path, file_size, mime_type, file_type, is_note, note_content)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO sources (id, workspace_id, original_name, filename, file_path, file_size, mime_type, file_type, is_note, note_content)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
+          workspaceId,
           file.originalname,
           file.filename,
           relativePath,
@@ -46,6 +48,7 @@ export async function uploadFiles(req, res) {
 
       savedRecords.push({
         id,
+        workspace_id: workspaceId,
         original_name: file.originalname,
         filename: file.filename,
         file_path: relativePath,
@@ -69,11 +72,11 @@ export async function uploadFiles(req, res) {
 }
 
 /**
- * Create a custom text note (saves as physical .txt file and DB record)
+ * Create a custom text note per workspace
  */
 export async function createNote(req, res) {
   try {
-    const { title, content } = req.body;
+    const { title, content, workspaceId = 'ws_default' } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({ success: false, message: 'Note title is required.' });
@@ -95,10 +98,11 @@ export async function createNote(req, res) {
     const relativePath = path.relative(process.cwd(), filePath).replace(/\\/g, '/');
 
     await db.query(
-      `INSERT INTO sources (id, original_name, filename, file_path, file_size, mime_type, file_type, is_note, note_content)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO sources (id, workspace_id, original_name, filename, file_path, file_size, mime_type, file_type, is_note, note_content)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
+        workspaceId,
         `${title.trim()}.txt`,
         filename,
         relativePath,
@@ -112,6 +116,7 @@ export async function createNote(req, res) {
 
     const record = {
       id,
+      workspace_id: workspaceId,
       original_name: `${title.trim()}.txt`,
       filename,
       file_path: relativePath,
@@ -135,11 +140,19 @@ export async function createNote(req, res) {
 }
 
 /**
- * Get all uploaded files and notes
+ * Get uploaded files and notes (optionally filtered by workspaceId)
  */
 export async function getAllSources(req, res) {
   try {
-    const results = await db.query('SELECT * FROM sources ORDER BY created_at DESC');
+    const { workspaceId } = req.query;
+    let results;
+
+    if (workspaceId) {
+      results = await db.query('SELECT * FROM sources WHERE workspace_id = ? ORDER BY created_at DESC', [workspaceId]);
+    } else {
+      results = await db.query('SELECT * FROM sources ORDER BY created_at DESC');
+    }
+
     return res.json({
       success: true,
       sources: results
