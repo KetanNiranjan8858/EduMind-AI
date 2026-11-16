@@ -88,10 +88,11 @@ export default function App() {
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [previewSource, setPreviewSource] = useState(null);
 
-  // Recent Quizzes in Studio (Persisted per workspace in localStorage)
+  // Recent Quizzes in Studio (Persisted per workspace and user in localStorage)
   const [recentQuizzes, setRecentQuizzes] = useState(() => {
     try {
-      const saved = localStorage.getItem(`edumind_recent_quizzes_${activeWorkspaceId}`);
+      const userKey = currentUser?.id || 'guest';
+      const saved = localStorage.getItem(`edumind_recent_quizzes_${userKey}_${activeWorkspaceId}`);
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -136,54 +137,58 @@ export default function App() {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Load Workspaces on mount
+  // Load Workspaces on mount and when user login state changes
   useEffect(() => {
-    loadWorkspaces();
-  }, []);
+    loadWorkspaces(currentUser?.id);
+  }, [currentUser?.id]);
 
-  // When activeWorkspaceId changes, load sources and history
+  // When activeWorkspaceId or currentUser changes, load sources and history
   useEffect(() => {
     localStorage.setItem('edumind_active_workspace_id', activeWorkspaceId);
-    loadWorkspaceData(activeWorkspaceId);
+    loadWorkspaceData(activeWorkspaceId, currentUser?.id);
 
-    // Restore recent quizzes for this workspace
+    // Restore recent quizzes for this workspace & user
     try {
-      const saved = localStorage.getItem(`edumind_recent_quizzes_${activeWorkspaceId}`);
+      const userKey = currentUser?.id || 'guest';
+      const saved = localStorage.getItem(`edumind_recent_quizzes_${userKey}_${activeWorkspaceId}`);
       setRecentQuizzes(saved ? JSON.parse(saved) : []);
     } catch {
       setRecentQuizzes([]);
     }
-  }, [activeWorkspaceId]);
+  }, [activeWorkspaceId, currentUser?.id]);
 
-  // Sync recentQuizzes to workspace key
+  // Sync recentQuizzes to workspace & user key
   useEffect(() => {
     try {
-      localStorage.setItem(`edumind_recent_quizzes_${activeWorkspaceId}`, JSON.stringify(recentQuizzes));
+      const userKey = currentUser?.id || 'guest';
+      localStorage.setItem(`edumind_recent_quizzes_${userKey}_${activeWorkspaceId}`, JSON.stringify(recentQuizzes));
     } catch {}
-  }, [recentQuizzes, activeWorkspaceId]);
+  }, [recentQuizzes, activeWorkspaceId, currentUser?.id]);
 
-  async function loadWorkspaces() {
+  async function loadWorkspaces(userId = currentUser?.id) {
     try {
-      const res = await fetchWorkspaces();
+      const res = await fetchWorkspaces(userId);
       if (res.workspaces && res.workspaces.length > 0) {
         setWorkspaces(res.workspaces);
         if (!res.workspaces.some(w => w.id === activeWorkspaceId)) {
           setActiveWorkspaceId(res.workspaces[0].id);
         }
+      } else {
+        setWorkspaces([]);
       }
     } catch (err) {
       console.warn('Could not load workspaces:', err.message);
     }
   }
 
-  async function loadWorkspaceData(wsId) {
+  async function loadWorkspaceData(wsId, userId = currentUser?.id) {
     try {
       setLoadingSources(true);
       const [srcRes, histRes] = await Promise.all([
-        fetchSources(wsId),
+        fetchSources(wsId, userId),
         fetchExamHistory({
           workspaceId: wsId,
-          userId: currentUser?.id,
+          userId: userId,
           candidateId: currentUser?.candidateId
         }).catch(() => ({ history: [] }))
       ]);
@@ -198,6 +203,8 @@ export default function App() {
 
       if (histRes.history) {
         setExamHistory(histRes.history);
+      } else {
+        setExamHistory([]);
       }
     } catch (err) {
       console.warn('Error loading workspace data:', err.message);
@@ -205,23 +212,6 @@ export default function App() {
       setLoadingSources(false);
     }
   }
-
-  // Refresh candidate exam history whenever candidate logs in or logs out
-  useEffect(() => {
-    async function syncCandidateHistory() {
-      try {
-        const histRes = await fetchExamHistory({
-          workspaceId: activeWorkspaceId,
-          userId: currentUser?.id,
-          candidateId: currentUser?.candidateId
-        });
-        if (histRes.history) setExamHistory(histRes.history);
-      } catch (err) {
-        console.warn('Failed to sync history for candidate:', err);
-      }
-    }
-    syncCandidateHistory();
-  }, [currentUser]);
 
   function handleTogglePin(wsId, e) {
     if (e) e.stopPropagation();
@@ -244,7 +234,7 @@ export default function App() {
   }
 
   async function handleCreateWorkspace(data) {
-    const res = await createWorkspace(data);
+    const res = await createWorkspace({ ...data, userId: currentUser?.id });
     if (res.workspace) {
       setWorkspaces(prev => [...prev, res.workspace]);
       setActiveWorkspaceId(res.workspace.id);
@@ -263,7 +253,7 @@ export default function App() {
           setActiveWorkspaceId(remaining[0].id);
         } else {
           try {
-            const res = await createWorkspace({ name: 'General Study Workspace', color: 'indigo' });
+            const res = await createWorkspace({ name: 'General Study Workspace', color: 'indigo', userId: currentUser?.id });
             if (res.workspace) {
               setWorkspaces([res.workspace]);
               setActiveWorkspaceId(res.workspace.id);
@@ -283,7 +273,7 @@ export default function App() {
   async function handleUploadFiles(fileList) {
     try {
       setUploading(true);
-      const res = await uploadFiles(fileList, activeWorkspaceId);
+      const res = await uploadFiles(fileList, activeWorkspaceId, currentUser?.id);
       if (res.files) {
         setSources((prev) => [...res.files, ...prev]);
         setSelectedIds((prev) => [...res.files.map((f) => f.id), ...prev]);
@@ -296,7 +286,7 @@ export default function App() {
   }
 
   async function handleCreateNote({ title, content }) {
-    const res = await createNote({ title, content, workspaceId: activeWorkspaceId });
+    const res = await createNote({ title, content, workspaceId: activeWorkspaceId, userId: currentUser?.id });
     if (res.note) {
       setSources((prev) => [res.note, ...prev]);
       setSelectedIds((prev) => [res.note.id, ...prev]);
@@ -458,11 +448,21 @@ export default function App() {
   function handleLoginUser(userData) {
     setCurrentUser(userData);
     localStorage.setItem('edumind_user', JSON.stringify(userData));
+    loadWorkspaces(userData.id);
+    loadWorkspaceData(activeWorkspaceId, userData.id);
   }
 
   function handleLogoutUser() {
     setCurrentUser(null);
     localStorage.removeItem('edumind_user');
+    // Clear all in-memory user data immediately so that nothing persists in the UI
+    setSources([]);
+    setSelectedIds([]);
+    setExamHistory([]);
+    setRecentQuizzes([]);
+    setActiveWorkspaceId('ws_default');
+    loadWorkspaces(null);
+    loadWorkspaceData('ws_default', null);
   }
 
   async function handleSelectPrepTrack(track) {
@@ -597,6 +597,7 @@ export default function App() {
             allSources={sources}
             workspaceId={activeWorkspaceId}
             workspaceName={activeWorkspace.name}
+            userId={currentUser?.id}
             onUpdateWorkspaceName={handleUpdateWorkspaceName}
           />
         </main>

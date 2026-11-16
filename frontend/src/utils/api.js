@@ -10,17 +10,18 @@ export async function fetchHealth() {
 }
 
 // ================= WORKSPACES =================
-export async function fetchWorkspaces() {
-  const res = await fetch(`${API_BASE}/workspaces`);
+export async function fetchWorkspaces(userId) {
+  const url = userId ? `${API_BASE}/workspaces?userId=${encodeURIComponent(userId)}` : `${API_BASE}/workspaces`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to fetch workspaces');
   return await res.json();
 }
 
-export async function createWorkspace({ name, description, color, icon }) {
+export async function createWorkspace({ name, description, color, icon, userId }) {
   const res = await fetch(`${API_BASE}/workspaces`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, description, color, icon })
+    body: JSON.stringify({ name, description, color, icon, userId })
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -54,16 +55,21 @@ export async function deleteWorkspace(id) {
 }
 
 // ================= SOURCES =================
-export async function fetchSources(workspaceId) {
-  const url = workspaceId ? `${API_BASE}/files?workspaceId=${workspaceId}` : `${API_BASE}/files`;
+export async function fetchSources(workspaceId, userId) {
+  const params = new URLSearchParams();
+  if (workspaceId) params.append('workspaceId', workspaceId);
+  if (userId) params.append('userId', userId);
+  const qs = params.toString();
+  const url = qs ? `${API_BASE}/files?${qs}` : `${API_BASE}/files`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to fetch sources');
   return await res.json();
 }
 
-export async function uploadFiles(fileList, workspaceId = 'ws_default') {
+export async function uploadFiles(fileList, workspaceId = 'ws_default', userId = null) {
   const formData = new FormData();
   formData.append('workspaceId', workspaceId);
+  if (userId) formData.append('userId', userId);
   for (let i = 0; i < fileList.length; i++) {
     formData.append('files', fileList[i]);
   }
@@ -81,11 +87,11 @@ export async function uploadFiles(fileList, workspaceId = 'ws_default') {
   return await res.json();
 }
 
-export async function createNote({ title, content, workspaceId = 'ws_default' }) {
+export async function createNote({ title, content, workspaceId = 'ws_default', userId = null }) {
   const res = await fetch(`${API_BASE}/files/note`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, content, workspaceId })
+    body: JSON.stringify({ title, content, workspaceId, userId })
   });
 
   if (!res.ok) {
@@ -125,11 +131,11 @@ export async function generateQuiz({ sourceIds, difficulty, questionCount, works
   return await res.json();
 }
 
-export async function sendChatMessage({ sourceIds, messages, userQuery, workspaceId = 'ws_default' }) {
+export async function sendChatMessage({ sourceIds, messages, userQuery, workspaceId = 'ws_default', userId = null }) {
   const res = await fetch(`${API_BASE}/ai/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sourceIds, messages, userQuery, workspaceId })
+    body: JSON.stringify({ sourceIds, messages, userQuery, workspaceId, userId })
   });
 
   if (!res.ok) {
@@ -140,14 +146,18 @@ export async function sendChatMessage({ sourceIds, messages, userQuery, workspac
   return await res.json();
 }
 
-export async function fetchChatHistory(workspaceId = 'ws_default') {
-  const res = await fetch(`${API_BASE}/ai/chat-history?workspaceId=${workspaceId}`);
+export async function fetchChatHistory(workspaceId = 'ws_default', userId = null) {
+  let url = `${API_BASE}/ai/chat-history?workspaceId=${encodeURIComponent(workspaceId)}`;
+  if (userId) url += `&userId=${encodeURIComponent(userId)}`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to fetch chat history');
   return await res.json();
 }
 
-export async function clearChatHistory(workspaceId = 'ws_default') {
-  const res = await fetch(`${API_BASE}/ai/chat-history?workspaceId=${workspaceId}`, {
+export async function clearChatHistory(workspaceId = 'ws_default', userId = null) {
+  let url = `${API_BASE}/ai/chat-history?workspaceId=${encodeURIComponent(workspaceId)}`;
+  if (userId) url += `&userId=${encodeURIComponent(userId)}`;
+  const res = await fetch(url, {
     method: 'DELETE'
   });
   if (!res.ok) throw new Error('Failed to clear chat history');

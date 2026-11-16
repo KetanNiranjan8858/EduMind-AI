@@ -78,7 +78,7 @@ export async function generateQuizHandler(req, res) {
  */
 export async function chatHandler(req, res) {
   try {
-    const { sourceIds = [], messages = [], userQuery, workspaceId = 'ws_default' } = req.body;
+    const { sourceIds = [], messages = [], userQuery, workspaceId = 'ws_default', userId = null } = req.body;
 
     if (!userQuery || !userQuery.trim()) {
       return res.status(400).json({ success: false, message: 'Message query cannot be empty.' });
@@ -96,20 +96,20 @@ export async function chatHandler(req, res) {
       userQuery: userQuery.trim()
     });
 
-    // Persist messages in DB
+    // Persist messages in DB with user_id
     try {
       const userMsgId = `msg_${Date.now()}_u`;
       const aiMsgId = `msg_${Date.now() + 1}_a`;
 
       await db.query(
-        'INSERT INTO chat_messages (id, workspace_id, sender, message) VALUES (?, ?, ?, ?)',
-        [userMsgId, workspaceId, 'user', userQuery.trim()]
+        'INSERT INTO chat_messages (id, workspace_id, user_id, sender, message) VALUES (?, ?, ?, ?, ?)',
+        [userMsgId, workspaceId, userId, 'user', userQuery.trim()]
       );
 
       if (result.reply) {
         await db.query(
-          'INSERT INTO chat_messages (id, workspace_id, sender, message) VALUES (?, ?, ?, ?)',
-          [aiMsgId, workspaceId, 'ai', result.reply]
+          'INSERT INTO chat_messages (id, workspace_id, user_id, sender, message) VALUES (?, ?, ?, ?, ?)',
+          [aiMsgId, workspaceId, userId, 'ai', result.reply]
         );
       }
     } catch (dbErr) {
@@ -135,11 +135,20 @@ export async function chatHandler(req, res) {
  */
 export async function getChatHistoryHandler(req, res) {
   try {
-    const { workspaceId = 'ws_default' } = req.query;
-    const history = await db.query(
-      'SELECT * FROM chat_messages WHERE workspace_id = ? ORDER BY created_at ASC',
-      [workspaceId]
-    );
+    const { workspaceId = 'ws_default', userId } = req.query;
+    let history;
+
+    if (userId) {
+      history = await db.query(
+        'SELECT * FROM chat_messages WHERE workspace_id = ? AND user_id = ? ORDER BY created_at ASC',
+        [workspaceId, userId]
+      );
+    } else {
+      history = await db.query(
+        'SELECT * FROM chat_messages WHERE workspace_id = ? AND user_id IS NULL ORDER BY created_at ASC',
+        [workspaceId]
+      );
+    }
 
     return res.json({
       success: true,
@@ -161,8 +170,12 @@ export async function getChatHistoryHandler(req, res) {
  */
 export async function clearChatHistoryHandler(req, res) {
   try {
-    const { workspaceId = 'ws_default' } = req.query;
-    await db.query('DELETE FROM chat_messages WHERE workspace_id = ?', [workspaceId]);
+    const { workspaceId = 'ws_default', userId } = req.query;
+    if (userId) {
+      await db.query('DELETE FROM chat_messages WHERE workspace_id = ? AND user_id = ?', [workspaceId, userId]);
+    } else {
+      await db.query('DELETE FROM chat_messages WHERE workspace_id = ? AND user_id IS NULL', [workspaceId]);
+    }
     return res.json({ success: true, message: 'Chat history cleared' });
   } catch (err) {
     console.error('[EduMind Chat Clear] Error:', err);

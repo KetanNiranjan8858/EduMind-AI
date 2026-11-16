@@ -14,9 +14,9 @@ export async function getExamHistory(req, res) {
         [queryId, candidateId || queryId]
       );
     } else {
-      // Fallback to workspace history if not logged in
+      // When logged out, only return guest attempts (do not leak logged-in candidate attempts)
       history = await db.query(
-        'SELECT * FROM exam_attempts WHERE workspace_id = ? ORDER BY submitted_at DESC',
+        'SELECT * FROM exam_attempts WHERE workspace_id = ? AND user_id IS NULL AND candidate_id IS NULL ORDER BY submitted_at DESC',
         [workspaceId]
       );
     }

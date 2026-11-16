@@ -111,12 +111,14 @@ export async function initDB() {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS workspaces (
         id VARCHAR(64) PRIMARY KEY,
+        user_id VARCHAR(64) DEFAULT NULL,
         name VARCHAR(150) NOT NULL,
         description TEXT,
         color VARCHAR(50) DEFAULT 'indigo',
         icon VARCHAR(50) DEFAULT 'book',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_workspace_user (user_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
@@ -124,16 +126,17 @@ export async function initDB() {
     const [existingWs] = await pool.query('SELECT id FROM workspaces LIMIT 1');
     if (!existingWs || existingWs.length === 0) {
       await pool.query(
-        'INSERT INTO workspaces (id, name, description, color, icon) VALUES (?, ?, ?, ?, ?)',
-        ['ws_default', 'General Study Workspace', 'Default study space for documents, notes, and assessments', 'indigo', 'book']
+        'INSERT INTO workspaces (id, name, description, color, icon, user_id) VALUES (?, ?, ?, ?, ?, ?)',
+        ['ws_default', 'General Study Workspace', 'Default study space for documents, notes, and assessments', 'indigo', 'book', null]
       );
     }
 
-    // 2. Sources
+    // 2. Sources (Tied to User ID)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS sources (
         id VARCHAR(64) PRIMARY KEY,
         workspace_id VARCHAR(64) NOT NULL,
+        user_id VARCHAR(64) DEFAULT NULL,
         original_name VARCHAR(255) NOT NULL,
         filename VARCHAR(255) NOT NULL,
         file_path VARCHAR(500) NOT NULL,
@@ -144,7 +147,8 @@ export async function initDB() {
         note_content LONGTEXT,
         gemini_file_uri VARCHAR(500) DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_workspace_sources (workspace_id)
+        INDEX idx_workspace_sources (workspace_id),
+        INDEX idx_user_sources (user_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
@@ -153,13 +157,15 @@ export async function initDB() {
       CREATE TABLE IF NOT EXISTS quizzes (
         id VARCHAR(64) PRIMARY KEY,
         workspace_id VARCHAR(64) NOT NULL,
+        user_id VARCHAR(64) DEFAULT NULL,
         title VARCHAR(255) NOT NULL,
         difficulty VARCHAR(50) NOT NULL,
         total_questions INT NOT NULL DEFAULT 10,
         questions_json LONGTEXT NOT NULL,
         source_files_json TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_workspace_quizzes (workspace_id)
+        INDEX idx_workspace_quizzes (workspace_id),
+        INDEX idx_user_quizzes (user_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
@@ -193,15 +199,17 @@ export async function initDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
-    // 5. Chat Messages
+    // 5. Chat Messages (Tied to User ID)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS chat_messages (
         id VARCHAR(64) PRIMARY KEY,
         workspace_id VARCHAR(64) NOT NULL,
+        user_id VARCHAR(64) DEFAULT NULL,
         sender VARCHAR(20) NOT NULL,
         message LONGTEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_workspace_chat (workspace_id)
+        INDEX idx_workspace_chat (workspace_id),
+        INDEX idx_user_chat (user_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
@@ -311,24 +319,49 @@ export async function query(sql, params = []) {
     return { affectedRows: 0 };
   }
 
-  // WORKSPACES
+  // WORKSPACES (Supports User ID Isolation)
   if (lowerSql.startsWith('select * from workspaces')) {
-    return store.workspaces || [];
+    let list = store.workspaces || [];
+    if (lowerSql.includes('user_id =') || lowerSql.includes('user_id is null')) {
+      const p = params[0];
+      if (p) {
+        list = list.filter(w => !w.user_id || w.user_id === p);
+      } else {
+        list = list.filter(w => !w.user_id);
+      }
+    }
+    return list;
   }
   if (lowerSql.startsWith('insert into workspaces')) {
-    const [id, name, description, color, icon] = params;
-    const ws = {
-      id,
-      name,
-      description: description || '',
-      color: color || 'indigo',
-      icon: icon || 'book',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
+    let ws;
+    if (params.length >= 6) {
+      const [id, name, description, color, icon, user_id] = params;
+      ws = {
+        id,
+        user_id: user_id || null,
+        name,
+        description: description || '',
+        color: color || 'indigo',
+        icon: icon || 'book',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+    } else {
+      const [id, name, description, color, icon] = params;
+      ws = {
+        id,
+        user_id: null,
+        name,
+        description: description || '',
+        color: color || 'indigo',
+        icon: icon || 'book',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+    }
     store.workspaces.push(ws);
     writeFallback(store);
-    return { affectedRows: 1, insertId: id };
+    return { affectedRows: 1, insertId: ws.id };
   }
   if (lowerSql.startsWith('update workspaces set name = ? where id = ?')) {
     const [name, id] = params;
@@ -352,38 +385,69 @@ export async function query(sql, params = []) {
     return { affectedRows: 1 };
   }
 
-  // SOURCES
-  if (lowerSql.startsWith('select * from sources where workspace_id =')) {
-    const wsId = params[0];
-    return store.sources.filter(s => s.workspace_id === wsId).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  }
-  if (lowerSql.startsWith('select * from sources where id =') || lowerSql.includes('sources where id = ?')) {
-    const id = params[0];
-    const found = store.sources.find(s => s.id === id);
-    return found ? [found] : [];
-  }
-  if (lowerSql.startsWith('select * from sources order by created_at desc')) {
-    return store.sources.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  // SOURCES (Supports User ID Isolation - Does not show after logout)
+  if (lowerSql.startsWith('select * from sources')) {
+    let list = store.sources || [];
+    if (lowerSql.includes('workspace_id =')) {
+      const wsId = params[0];
+      list = list.filter(s => s.workspace_id === wsId);
+      if (lowerSql.includes('user_id =')) {
+        const userId = params[1];
+        if (userId) {
+          list = list.filter(s => s.user_id === userId);
+        } else {
+          list = list.filter(s => !s.user_id);
+        }
+      } else if (lowerSql.includes('user_id is null')) {
+        list = list.filter(s => !s.user_id);
+      }
+    } else if (lowerSql.includes('id =')) {
+      const id = params[0];
+      const found = list.find(s => s.id === id);
+      return found ? [found] : [];
+    }
+    return list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }
   if (lowerSql.startsWith('insert into sources')) {
-    const [id, workspace_id, original_name, filename, file_path, file_size, mime_type, file_type, is_note, note_content] = params;
-    const record = {
-      id,
-      workspace_id: workspace_id || 'ws_default',
-      original_name,
-      filename,
-      file_path,
-      file_size: Number(file_size) || 0,
-      mime_type,
-      file_type,
-      is_note: Boolean(is_note),
-      note_content: note_content || null,
-      gemini_file_uri: null,
-      created_at: new Date().toISOString()
-    };
+    let record;
+    if (params.length >= 11) {
+      const [id, workspace_id, user_id, original_name, filename, file_path, file_size, mime_type, file_type, is_note, note_content] = params;
+      record = {
+        id,
+        workspace_id: workspace_id || 'ws_default',
+        user_id: user_id || null,
+        original_name,
+        filename,
+        file_path,
+        file_size: Number(file_size) || 0,
+        mime_type,
+        file_type,
+        is_note: Boolean(is_note),
+        note_content: note_content || null,
+        gemini_file_uri: null,
+        created_at: new Date().toISOString()
+      };
+    } else {
+      const [id, workspace_id, original_name, filename, file_path, file_size, mime_type, file_type, is_note, note_content] = params;
+      record = {
+        id,
+        workspace_id: workspace_id || 'ws_default',
+        user_id: null,
+        original_name,
+        filename,
+        file_path,
+        file_size: Number(file_size) || 0,
+        mime_type,
+        file_type,
+        is_note: Boolean(is_note),
+        note_content: note_content || null,
+        gemini_file_uri: null,
+        created_at: new Date().toISOString()
+      };
+    }
     store.sources.unshift(record);
     writeFallback(store);
-    return { affectedRows: 1, insertId: id };
+    return { affectedRows: 1, insertId: record.id };
   }
   if (lowerSql.startsWith('delete from sources where id =')) {
     const id = params[0];
@@ -413,6 +477,9 @@ export async function query(sql, params = []) {
     } else if (lowerSql.includes('workspace_id =')) {
       const wsId = params[0];
       list = list.filter(a => a.workspace_id === wsId);
+      if (lowerSql.includes('user_id is null')) {
+        list = list.filter(a => !a.user_id && !a.candidate_id);
+      }
     }
 
     return list.sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
@@ -494,29 +561,60 @@ export async function query(sql, params = []) {
     return { affectedRows: 1 };
   }
 
-  // CHAT MESSAGES
+  // CHAT MESSAGES (Supports User ID Isolation)
   if (lowerSql.startsWith('select * from chat_messages where workspace_id =')) {
     const wsId = params[0];
-    return store.chat_messages
-      .filter(c => c.workspace_id === wsId)
-      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    let list = (store.chat_messages || []).filter(c => c.workspace_id === wsId);
+    if (lowerSql.includes('user_id =')) {
+      const userId = params[1];
+      if (userId) {
+        list = list.filter(c => c.user_id === userId);
+      } else {
+        list = list.filter(c => !c.user_id);
+      }
+    } else if (lowerSql.includes('user_id is null')) {
+      list = list.filter(c => !c.user_id);
+    }
+    return list.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
   }
   if (lowerSql.startsWith('insert into chat_messages')) {
-    const [id, workspace_id, sender, message] = params;
-    const msg = {
-      id,
-      workspace_id: workspace_id || 'ws_default',
-      sender,
-      message,
-      created_at: new Date().toISOString()
-    };
+    let msg;
+    if (params.length >= 5) {
+      const [id, workspace_id, user_id, sender, message] = params;
+      msg = {
+        id,
+        workspace_id: workspace_id || 'ws_default',
+        user_id: user_id || null,
+        sender,
+        message,
+        created_at: new Date().toISOString()
+      };
+    } else {
+      const [id, workspace_id, sender, message] = params;
+      msg = {
+        id,
+        workspace_id: workspace_id || 'ws_default',
+        user_id: null,
+        sender,
+        message,
+        created_at: new Date().toISOString()
+      };
+    }
+    if (!store.chat_messages) store.chat_messages = [];
     store.chat_messages.push(msg);
     writeFallback(store);
-    return { affectedRows: 1, insertId: id };
+    return { affectedRows: 1, insertId: msg.id };
   }
   if (lowerSql.startsWith('delete from chat_messages where workspace_id =')) {
     const wsId = params[0];
-    store.chat_messages = store.chat_messages.filter(c => c.workspace_id !== wsId);
+    if (lowerSql.includes('user_id =')) {
+      const userId = params[1];
+      store.chat_messages = (store.chat_messages || []).filter(c => !(c.workspace_id === wsId && c.user_id === userId));
+    } else if (lowerSql.includes('user_id is null')) {
+      store.chat_messages = (store.chat_messages || []).filter(c => !(c.workspace_id === wsId && !c.user_id));
+    } else {
+      store.chat_messages = (store.chat_messages || []).filter(c => c.workspace_id !== wsId);
+    }
     writeFallback(store);
     return { affectedRows: 1 };
   }

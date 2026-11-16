@@ -3,7 +3,19 @@ import db from '../config/db.js';
 
 export async function getWorkspaces(req, res) {
   try {
-    const list = await db.query('SELECT * FROM workspaces ORDER BY created_at ASC');
+    const { userId } = req.query;
+    let list;
+    if (userId) {
+      list = await db.query(
+        'SELECT * FROM workspaces WHERE user_id = ? OR user_id IS NULL ORDER BY created_at ASC',
+        [userId]
+      );
+    } else {
+      list = await db.query(
+        'SELECT * FROM workspaces WHERE user_id IS NULL ORDER BY created_at ASC'
+      );
+    }
+
     return res.json({
       success: true,
       workspaces: list
@@ -16,7 +28,7 @@ export async function getWorkspaces(req, res) {
 
 export async function createWorkspace(req, res) {
   try {
-    const { name, description = '', color = 'indigo', icon = 'book' } = req.body;
+    const { name, description = '', color = 'indigo', icon = 'book', userId = null } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Workspace name is required.' });
@@ -24,12 +36,13 @@ export async function createWorkspace(req, res) {
 
     const id = `ws_${Date.now()}_${uuidv4().slice(0, 8)}`;
     await db.query(
-      'INSERT INTO workspaces (id, name, description, color, icon) VALUES (?, ?, ?, ?, ?)',
-      [id, name.trim(), description.trim(), color, icon]
+      'INSERT INTO workspaces (id, name, description, color, icon, user_id) VALUES (?, ?, ?, ?, ?, ?)',
+      [id, name.trim(), description.trim(), color, icon, userId]
     );
 
     const newWs = {
       id,
+      user_id: userId,
       name: name.trim(),
       description: description.trim(),
       color,

@@ -21,6 +21,7 @@ export default function ChatHub({
   allSources = [],
   workspaceId = 'ws_default',
   workspaceName = 'Workspace',
+  userId = null,
   onUpdateWorkspaceName
 }) {
   const [isEditingName, setIsEditingName] = useState(false);
@@ -69,12 +70,12 @@ This central workspace allows you to converse with Google Gemini 2.5 Flash groun
   const [loadingHistory, setLoadingHistory] = useState(false);
   const messagesEndRef = useRef(null);
 
-  // Load chat history when workspace changes
+  // Load chat history when workspace or user changes
   useEffect(() => {
     async function loadHistory() {
       try {
         setLoadingHistory(true);
-        const res = await fetchChatHistory(workspaceId);
+        const res = await fetchChatHistory(workspaceId, userId);
         if (res.messages && res.messages.length > 0) {
           setMessages(res.messages);
         } else {
@@ -87,7 +88,7 @@ This central workspace allows you to converse with Google Gemini 2.5 Flash groun
       }
     }
     loadHistory();
-  }, [workspaceId]);
+  }, [workspaceId, userId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -113,7 +114,8 @@ This central workspace allows you to converse with Google Gemini 2.5 Flash groun
         sourceIds,
         messages: messages.map((m) => ({ sender: m.sender, text: m.text })),
         userQuery: text,
-        workspaceId
+        workspaceId,
+        userId
       });
 
       const aiMsg = {
@@ -146,7 +148,7 @@ This central workspace allows you to converse with Google Gemini 2.5 Flash groun
   async function handleClearHistory() {
     if (!window.confirm('Clear all conversation history in this workspace?')) return;
     try {
-      await clearChatHistory(workspaceId);
+      await clearChatHistory(workspaceId, userId);
       setMessages([
         {
           id: `cleared-${Date.now()}`,

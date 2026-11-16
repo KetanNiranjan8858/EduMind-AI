@@ -22,6 +22,7 @@ export async function uploadFiles(req, res) {
     }
 
     const workspaceId = req.body.workspaceId || 'ws_default';
+    const userId = req.body.userId || null;
     const savedRecords = [];
 
     for (const file of req.files) {
@@ -30,11 +31,12 @@ export async function uploadFiles(req, res) {
       const relativePath = path.relative(process.cwd(), file.path).replace(/\\/g, '/');
 
       await db.query(
-        `INSERT INTO sources (id, workspace_id, original_name, filename, file_path, file_size, mime_type, file_type, is_note, note_content)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO sources (id, workspace_id, user_id, original_name, filename, file_path, file_size, mime_type, file_type, is_note, note_content)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           workspaceId,
+          userId,
           file.originalname,
           file.filename,
           relativePath,
@@ -49,6 +51,7 @@ export async function uploadFiles(req, res) {
       savedRecords.push({
         id,
         workspace_id: workspaceId,
+        user_id: userId,
         original_name: file.originalname,
         filename: file.filename,
         file_path: relativePath,
@@ -76,7 +79,7 @@ export async function uploadFiles(req, res) {
  */
 export async function createNote(req, res) {
   try {
-    const { title, content, workspaceId = 'ws_default' } = req.body;
+    const { title, content, workspaceId = 'ws_default', userId = null } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({ success: false, message: 'Note title is required.' });
@@ -98,11 +101,12 @@ export async function createNote(req, res) {
     const relativePath = path.relative(process.cwd(), filePath).replace(/\\/g, '/');
 
     await db.query(
-      `INSERT INTO sources (id, workspace_id, original_name, filename, file_path, file_size, mime_type, file_type, is_note, note_content)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO sources (id, workspace_id, user_id, original_name, filename, file_path, file_size, mime_type, file_type, is_note, note_content)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         workspaceId,
+        userId,
         `${title.trim()}.txt`,
         filename,
         relativePath,
@@ -117,6 +121,7 @@ export async function createNote(req, res) {
     const record = {
       id,
       workspace_id: workspaceId,
+      user_id: userId,
       original_name: `${title.trim()}.txt`,
       filename,
       file_path: relativePath,
@@ -140,17 +145,25 @@ export async function createNote(req, res) {
 }
 
 /**
- * Get uploaded files and notes (optionally filtered by workspaceId)
+ * Get uploaded files and notes (optionally filtered by workspaceId and userId)
  */
 export async function getAllSources(req, res) {
   try {
-    const { workspaceId } = req.query;
+    const { workspaceId = 'ws_default', userId } = req.query;
     let results;
 
-    if (workspaceId) {
-      results = await db.query('SELECT * FROM sources WHERE workspace_id = ? ORDER BY created_at DESC', [workspaceId]);
+    if (userId) {
+      // User is logged in: return their personal sources
+      results = await db.query(
+        'SELECT * FROM sources WHERE workspace_id = ? AND user_id = ? ORDER BY created_at DESC',
+        [workspaceId, userId]
+      );
     } else {
-      results = await db.query('SELECT * FROM sources ORDER BY created_at DESC');
+      // User is logged out: DO NOT show private user sources
+      results = await db.query(
+        'SELECT * FROM sources WHERE workspace_id = ? AND user_id IS NULL ORDER BY created_at DESC',
+        [workspaceId]
+      );
     }
 
     return res.json({
