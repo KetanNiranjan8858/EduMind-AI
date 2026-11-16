@@ -37,15 +37,15 @@ export default function ExamPrepQuestionsView({
                 {selectedTotalQuestions} Questions Available
               </span>
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {isAllSelected
-                ? 'Displaying all 10 GATE CS benchmark papers. Click "Generate Exam" on the right to attempt a custom CBT test.'
-                : filteredExams.length === 1
-                ? `Showing high-yield GATE questions and benchmark exam for ${filteredExams[0].subject}.`
-                : `Showing combined benchmark exams and questions for: ${filteredExams
-                    .map((e) => e.subject)
-                    .join(', ')}.`}
-            </p>
+            {!isAllSelected && (
+              <p className="text-xs text-slate-400 mt-0.5">
+                {filteredExams.length === 1
+                  ? `Showing high-yield GATE questions and benchmark exam for ${filteredExams[0].subject}.`
+                  : `Showing combined benchmark exams and questions for: ${filteredExams
+                      .map((e) => e.subject)
+                      .join(', ')}.`}
+              </p>
+            )}
           </div>
         </div>
 
@@ -95,28 +95,8 @@ export default function ExamPrepQuestionsView({
             </button>
           </div>
         ) : isAllSelected ? (
-          /* When All Subjects Are Selected: Overview Grid of All 10 Benchmark Papers */
+          /* When All Subjects Are Selected: Overview Grid of All Benchmark Papers */
           <div className="space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                <BookMarked className="w-4 h-4 text-rose-400" />
-                All 10 GATE CS/IT Benchmark Question Papers
-              </h3>
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-mono text-slate-500">
-                  Total {gateExams.length} Papers • {totalQuestionsInBank} Questions
-                </span>
-                <button
-                  type="button"
-                  onClick={onOpenGenerateModal}
-                  className="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Generate Exam for Attempt</span>
-                </button>
-              </div>
-            </div>
-
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {filteredExams.map((exam) => (
                 <div
