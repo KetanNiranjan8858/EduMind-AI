@@ -1,20 +1,29 @@
 /**
  * EduMind AI — Curated CBT Exam Question Banks
- * Ready-to-attempt benchmark examinations across GATE CS/IT, TCS NQT, AI/ML, and Full-Stack Engineering.
+ * Dedicated GATE Computer Science & Information Technology (CS/IT) Papers
  */
 
-export const CURATED_EXAMS = [
+export const AVAILABLE_EXAMS = [
+  {
+    id: 'gate_cs',
+    title: 'GATE Computer Science & Information Technology (CS/IT)',
+    shortCode: 'GATE CS/IT',
+    stream: 'Engineering & Technology',
+    description: 'National level graduate engineering aptitude benchmark covering Systems, Algorithms, Networks, and Databases.'
+  }
+];
+
+export const GATE_EXAMS = [
   {
     id: 'exam_gate_os_01',
-    track: 'gate',
-    trackLabel: 'GATE Computer Science & IT',
-    quizTitle: 'GATE CS: Operating Systems & Virtual Memory Mastery',
-    category: 'Systems & Architecture',
+    track: 'gate_cs',
+    subject: 'Operating Systems',
+    quizTitle: 'GATE CS: Operating Systems & Virtual Memory',
     difficulty: 'Hard',
     totalQuestions: 10,
     timeLimitMinutes: 30,
-    description: 'High-rigor assessment covering two-level paging, effective memory access time (EMAT), counting semaphores, Banker\'s algorithm, and disk scheduling.',
-    topics: ['Paging & TLB', 'Semaphores & Concurrency', 'Deadlock & Banker\'s Algorithm', 'Disk Scheduling', 'Process Scheduling'],
+    description: 'Multi-level paging, effective memory access time (EMAT), counting semaphores, Banker\'s deadlock algorithm, and disk arm movement scheduling.',
+    topics: ['Paging & TLB', 'Semaphores & Concurrency', 'Banker\'s Algorithm', 'Disk Scheduling', 'Process Scheduling'],
     questions: [
       {
         id: 1,
@@ -56,7 +65,7 @@ export const CURATED_EXAMS = [
         id: 4,
         question: 'Consider 4 processes sharing 13 units of a single resource type. The peak demand for each process is 4 units. What is the maximum number of units that can be allocated to prevent a deadlock?',
         options: {
-          A: 'Deadlock can never occur because total resources (13) > 4 * (4 - 1)',
+          A: 'Deadlock can never occur because total resources (13) >= 4 * (4 - 1) + 1',
           B: 'Deadlock will occur if each process holds 3 units',
           C: 'At least 16 units are required for deadlock freedom',
           D: 'Deadlock occurs when 10 units are allocated'
@@ -140,15 +149,14 @@ export const CURATED_EXAMS = [
   },
   {
     id: 'exam_gate_algo_02',
-    track: 'gate',
-    trackLabel: 'GATE Computer Science & IT',
-    quizTitle: 'GATE CS: Data Structures & Algorithms Rigor',
-    category: 'Algorithms & Discrete Math',
+    track: 'gate_cs',
+    subject: 'Data Structures & Algorithms',
+    quizTitle: 'GATE CS: Data Structures & Algorithms',
     difficulty: 'Hard',
     totalQuestions: 10,
     timeLimitMinutes: 30,
-    description: 'Master theorem recurrences, AVL tree balancing, min-heap properties, Dijkstra vs Bellman-Ford, and 0/1 knapsack dynamic programming.',
-    topics: ['Asymptotic Analysis', 'AVL & BST', 'Graph Algorithms', 'Dynamic Programming', 'Greedy Invariants'],
+    description: 'Master theorem recurrence relations, AVL tree rotations, min-heap properties, Dijkstra negative edge behavior, and 0/1 knapsack dynamic programming.',
+    topics: ['Recurrences', 'AVL & BST', 'Heap Invariants', 'Graph Theory', 'Dynamic Programming'],
     questions: [
       {
         id: 1,
@@ -273,413 +281,269 @@ export const CURATED_EXAMS = [
     ]
   },
   {
-    id: 'exam_tcs_nqt_03',
-    track: 'tcs',
-    trackLabel: 'TCS NQT & Tech Placement Qualifiers',
-    quizTitle: 'TCS NQT: Advanced Coding Logic, Pointers & Pseudocode',
-    category: 'Placement & Industry Coding',
-    difficulty: 'Medium',
-    totalQuestions: 10,
-    timeLimitMinutes: 25,
-    description: 'Comprehensive test on C pointers, recursion call stacks, string manipulation, bitwise logic, and algorithmic complexity questions commonly asked in TCS NQT & campus drives.',
-    topics: ['C Pointers & Memory', 'Recursion Stacks', 'Bitwise Operators', 'String Algorithms', 'Pseudocode Invariants'],
-    questions: [
-      {
-        id: 1,
-        question: 'What is the output of the following C code snippet?\n\nint arr[] = {10, 20, 30, 40, 50};\nint *ptr = arr;\nprintf("%d", *(ptr + 2) + 5);',
-        options: {
-          A: '25',
-          B: '35',
-          C: '45',
-          D: '55'
-        },
-        correctAnswer: 'B',
-        explanation: 'arr decays to a pointer to its first element (10). ptr + 2 points to arr[2] which is 30. *(ptr + 2) dereferences it to 30. Then 30 + 5 evaluates to 35.'
-      },
-      {
-        id: 2,
-        question: 'Consider the recursive function:\n\nint func(int n) {\n  if (n <= 1) return 1;\n  return n * func(n - 2);\n}\n\nWhat is the return value of func(7)?',
-        options: {
-          A: '105',
-          B: '48',
-          C: '5040',
-          D: '120'
-        },
-        correctAnswer: 'A',
-        explanation: 'func(7) = 7 * func(5) = 7 * (5 * func(3)) = 7 * 5 * (3 * func(1)) = 7 * 5 * 3 * 1 = 105.'
-      },
-      {
-        id: 3,
-        question: 'What does the expression (x & (x - 1)) == 0 evaluate to in C for any positive integer x?',
-        options: {
-          A: 'Checks if x is an odd number',
-          B: 'Checks if x is a power of 2',
-          C: 'Checks if x is a prime number',
-          D: 'Checks if x is divisible by 4'
-        },
-        correctAnswer: 'B',
-        explanation: 'A power of two in binary has exactly one set bit (e.g. 8 is 1000). Subtracting 1 flips all bits up to that bit (8 - 1 = 7, which is 0111). Their bitwise AND (1000 & 0111) is 0000. Hence, (x & (x - 1)) == 0 tests if x is a power of 2.'
-      },
-      {
-        id: 4,
-        question: 'What is the time complexity of the following loop?\n\nfor (int i = 1; i <= n; i *= 2) {\n  for (int j = 1; j <= n; j++) {\n    // O(1) operations\n  }\n}',
-        options: {
-          A: 'O(n^2)',
-          B: 'O(n log n)',
-          C: 'O(n)',
-          D: 'O((log n)^2)'
-        },
-        correctAnswer: 'B',
-        explanation: 'The outer loop variable i doubles in each step (1, 2, 4, 8, ...), executing floor(log2 n) + 1 times. The inner loop executes n times for each outer iteration. Total operations = n * log2(n), giving O(n log n).'
-      },
-      {
-        id: 5,
-        question: 'What is the difference between malloc() and calloc() in standard C library?',
-        options: {
-          A: 'malloc() initializes allocated memory to zero, while calloc() leaves it uninitialized',
-          B: 'calloc() allocates contiguous memory and zeroes out all allocated bytes, while malloc() leaves allocated memory with garbage values',
-          C: 'malloc() can allocate more than 1 MB, calloc() cannot',
-          D: 'calloc() allocates on the stack, while malloc() allocates on the heap'
-        },
-        correctAnswer: 'B',
-        explanation: 'calloc(num_elements, element_size) allocates the required memory and initializes every byte to 0. malloc(size) allocates raw bytes from the heap without clearing them, containing garbage values.'
-      },
-      {
-        id: 6,
-        question: 'What will happen if you attempt to modify a string literal in C as follows?\n\nchar *str = "EduMind";\nstr[0] = \'e\';',
-        options: {
-          A: 'The string successfully becomes "eduMind"',
-          B: 'Segmentation fault / Undefined behavior at runtime because string literals are stored in read-only memory',
-          C: 'Compile-time error only',
-          D: 'The character is ignored silently'
-        },
-        correctAnswer: 'B',
-        explanation: 'In C, string literals like "EduMind" are stored in the read-only data segment (.rodata). Modifying read-only memory via a pointer causes a segmentation fault / access violation at runtime.'
-      },
-      {
-        id: 7,
-        question: 'What is the value of result after executing:\n\nint a = 5, b = 2;\nfloat result = (float)(a / b);',
-        options: {
-          A: '2.5',
-          B: '2.0',
-          C: '2.25',
-          D: '0.0'
-        },
-        correctAnswer: 'B',
-        explanation: 'In (a / b), both a and b are integers, so integer division occurs first: 5 / 2 = 2. Then the integer 2 is cast to float, resulting in 2.0. To obtain 2.5, at least one operand must be cast before division: ((float)a / b).'
-      },
-      {
-        id: 8,
-        question: 'What is the output of the following pseudocode?\n\nSet a = 12, b = 7\nSet a = a ^ b\nSet b = a ^ b\nSet a = a ^ b\nPrint a, b',
-        options: {
-          A: '12, 7',
-          B: '7, 12',
-          C: '0, 0',
-          D: '19, 5'
-        },
-        correctAnswer: 'B',
-        explanation: 'This is the classic three-step XOR swap algorithm. It swaps the values of variables a and b without requiring any third temporary variable: a becomes 7 and b becomes 12.'
-      },
-      {
-        id: 9,
-        question: 'In Object-Oriented Programming, what is Polymorphism achieved via function overriding called?',
-        options: {
-          A: 'Compile-time (Static) Polymorphism',
-          B: 'Run-time (Dynamic) Polymorphism using virtual method tables (vtable)',
-          C: 'Encapsulation',
-          D: 'Cohesion'
-        },
-        correctAnswer: 'B',
-        explanation: 'Function overriding allows a derived class to provide a specific implementation of a method declared in its base class. The method call is resolved dynamically at runtime using virtual tables (vtable), representing Run-time / Dynamic Polymorphism.'
-      },
-      {
-        id: 10,
-        question: 'What is the minimum number of queues required to implement a Last-In First-Out (LIFO) Stack data structure?',
-        options: {
-          A: '1',
-          B: '2',
-          C: '3',
-          D: '4'
-        },
-        correctAnswer: 'B',
-        explanation: 'A stack can be simulated using two queues by making either the push operation costly (O(n)) or the pop operation costly (O(n)), moving elements between the two queues to preserve LIFO order.'
-      }
-    ]
-  },
-  {
-    id: 'exam_ai_ml_04',
-    track: 'aiml',
-    trackLabel: 'AI, Machine Learning & Data Science',
-    quizTitle: 'AI & ML: Deep Learning, CNNs & Transformer Foundations',
-    category: 'Artificial Intelligence',
+    id: 'exam_gate_cn_03',
+    track: 'gate_cs',
+    subject: 'Computer Networks',
+    quizTitle: 'GATE CS: Computer Networks & Protocols',
     difficulty: 'Hard',
     totalQuestions: 10,
     timeLimitMinutes: 30,
-    description: 'Rigorous assessment on Self-Attention mechanism, Backpropagation chain rules, CNN receptive fields, vanishing gradients, Adam optimizer, and evaluation metrics.',
-    topics: ['Self-Attention & Transformers', 'CNN Architectures', 'Backpropagation', 'Loss Functions & Optimizers', 'Model Evaluation'],
+    description: 'Subnetting calculations, Stop-and-Wait/Sliding Window protocols, CSMA/CD frame limits, TCP flow/congestion control, and routing invariants.',
+    topics: ['Subnetting & CIDR', 'Sliding Window', 'TCP Congestion Control', 'CSMA/CD', 'Routing Protocols'],
     questions: [
       {
         id: 1,
-        question: 'In the Scaled Dot-Product Attention formula: Attention(Q, K, V) = softmax(Q * K^T / sqrt(d_k)) * V, why is the dot product scaled by 1/sqrt(d_k)?',
+        question: 'An organization is granted the IP block 192.168.10.0/26. What is the maximum number of assignable host IP addresses in this subnet, and what is its broadcast address?',
         options: {
-          A: 'To reduce computational complexity of matrix multiplication',
-          B: 'To prevent large magnitude dot products from pushing the softmax function into regions with extremely small gradients',
-          C: 'To guarantee that the resulting attention matrix is symmetric',
-          D: 'To normalize the vectors to unit length'
+          A: '62 hosts, broadcast: 192.168.10.63',
+          B: '64 hosts, broadcast: 192.168.10.64',
+          C: '30 hosts, broadcast: 192.168.10.31',
+          D: '126 hosts, broadcast: 192.168.10.127'
         },
-        correctAnswer: 'B',
-        explanation: 'For large values of dimension d_k, the dot products grow large in magnitude, pushing the softmax function into regions where the gradient is vanishingly small. Dividing by sqrt(d_k) stabilizes the variance of the logits to 1.'
+        correctAnswer: 'A',
+        explanation: 'With a /26 prefix, the host bits = 32 - 26 = 6 bits. Total IP addresses = 2^6 = 64. The assignable host addresses = 64 - 2 (network address and broadcast address) = 62. The block spans 192.168.10.0 to 192.168.10.63. The broadcast address is 192.168.10.63.'
       },
       {
         id: 2,
-        question: 'Given an input feature map of size 32 x 32 x 3, if we apply a convolutional layer with 16 filters of size 5 x 5, stride 1, and padding 2, what is the output dimension?',
+        question: 'In a Stop-and-Wait protocol, the packet size is 1000 bytes, bandwidth is 1 Mbps, and one-way propagation delay is 20 ms. What is the channel utilization (efficiency), neglecting ACK packet transmission time?',
         options: {
-          A: '32 x 32 x 16',
-          B: '28 x 28 x 16',
-          C: '30 x 30 x 16',
-          D: '32 x 32 x 3'
+          A: '16.7%',
+          B: '25.0%',
+          C: '50.0%',
+          D: '10.0%'
         },
         correctAnswer: 'A',
-        explanation: 'Output dimension formula: Out = floor((W - F + 2P)/S) + 1. Here W = 32, F = 5, P = 2, S = 1. Out = floor((32 - 5 + 4)/1) + 1 = 31 + 1 = 32. Since there are 16 filters, the output shape is 32 x 32 x 16.'
+        explanation: 'Transmission time T_t = (1000 * 8 bits) / (10^6 bps) = 8 ms. Propagation delay T_p = 20 ms. Parameter a = T_p / T_t = 20 / 8 = 2.5. Channel utilization for Stop-and-Wait: U = 1 / (1 + 2a) = 1 / (1 + 2 * 2.5) = 1 / 6 ≈ 16.67%.'
       },
       {
         id: 3,
-        question: 'Which of the following activation functions mitigates the vanishing gradient problem in deep neural networks during backpropagation?',
+        question: 'In a 10 Mbps CSMA/CD Ethernet network with propagation speed 2 * 10^8 m/s, the maximum cable length between any two stations is 1 km. What is the minimum frame size required for proper collision detection?',
         options: {
-          A: 'Sigmoid',
-          B: 'Tanh',
-          C: 'ReLU (Rectified Linear Unit)',
-          D: 'Softmax'
+          A: '100 bits',
+          B: '100 bytes (800 bits)',
+          C: '200 bits',
+          D: '500 bits'
         },
-        correctAnswer: 'C',
-        explanation: 'The derivative of Sigmoid is at most 0.25 and Tanh is at most 1.0, both saturating at extreme inputs and causing vanishing gradients. ReLU has a constant derivative of 1 for all positive inputs (x > 0), allowing gradients to backpropagate without exponential decay.'
+        correctAnswer: 'A',
+        explanation: 'One-way propagation delay T_p = Distance / Speed = 1000 m / (2 * 10^8 m/s) = 5 * 10^-6 s = 5 microseconds. For CSMA/CD collision detection, T_t >= 2 * T_p = 10 microseconds. Minimum frame size = Bandwidth * (2 * T_p) = (10 * 10^6 bps) * (10 * 10^-6 s) = 100 bits.'
       },
       {
         id: 4,
-        question: 'In a binary classification dataset where 98% of samples belong to the negative class and 2% belong to the positive class, which metric is the MOST deceptive if used alone?',
+        question: 'In a Selective Repeat ARQ sliding window protocol using m-bit sequence numbers, what is the maximum permissible sender and receiver window size to prevent ambiguity?',
         options: {
-          A: 'Accuracy',
-          B: 'F1-Score',
-          C: 'Precision',
-          D: 'Area Under the ROC Curve (ROC-AUC)'
+          A: '2^(m - 1)',
+          B: '2^m',
+          C: '2^m - 1',
+          D: '2^(m + 1)'
         },
         correctAnswer: 'A',
-        explanation: 'In highly imbalanced data (98% negative), a naive model predicting negative for all samples achieves 98% accuracy despite failing to detect a single positive instance. Hence, accuracy is deceptive, whereas F1-Score and Precision-Recall curves capture true performance.'
+        explanation: 'In Selective Repeat, window size of sender W_s plus window size of receiver W_r must satisfy: W_s + W_r <= 2^m. Since typically W_s = W_r, we have 2 * W <= 2^m, so maximum window size = 2^(m - 1).'
       },
       {
         id: 5,
-        question: 'What is the primary architectural difference between an LSTM and a standard vanilla Recurrent Neural Network (RNN)?',
+        question: 'A TCP connection is undergoing Congestion Avoidance with current congestion window (cwnd) = 16 MSS. If 3 consecutive duplicate ACKs are received, what will be the new values of ssthresh and cwnd under TCP Reno?',
         options: {
-          A: 'LSTMs use attention layers instead of recurrence',
-          B: 'LSTMs introduce a separate cell state and gating mechanisms (forget, input, and output gates) to regulate long-term gradient flow',
-          C: 'LSTMs cannot process sequential text data',
-          D: 'LSTMs have fewer parameters than vanilla RNNs'
+          A: 'ssthresh = 8 MSS, cwnd = 8 MSS + 3 MSS = 11 MSS (Fast Recovery)',
+          B: 'ssthresh = 8 MSS, cwnd = 1 MSS',
+          C: 'ssthresh = 16 MSS, cwnd = 8 MSS',
+          D: 'ssthresh = 4 MSS, cwnd = 1 MSS'
         },
-        correctAnswer: 'B',
-        explanation: 'LSTMs combat the vanishing gradient problem of vanilla RNNs by maintaining an uninterrupted linear cell state conduit, regulated by three multiplicative sigmoid gates (forget gate, input gate, output gate) to preserve gradients across long sequence spans.'
+        correctAnswer: 'A',
+        explanation: 'Under TCP Reno, triple duplicate ACKs trigger Fast Retransmit and Fast Recovery: ssthresh is halved to cwnd / 2 = 16 / 2 = 8 MSS. Then cwnd is set to ssthresh + 3 MSS = 11 MSS, avoiding a drop to 1 MSS (which only happens upon a full RTO timeout).'
       },
       {
         id: 6,
-        question: 'What is the role of L2 Regularization (Weight Decay) in training machine learning models?',
+        question: 'What is the maximum number of bytes in the options field of an IPv4 packet header?',
         options: {
-          A: 'It sets coefficients exactly to zero to perform automatic feature selection',
-          B: 'It adds a penalty proportional to the sum of squared weights to the loss function, encouraging smaller weight magnitudes to prevent overfitting',
-          C: 'It increases the learning rate dynamically',
-          D: 'It replaces gradient descent with genetic algorithms'
+          A: '40 bytes',
+          B: '20 bytes',
+          C: '60 bytes',
+          D: '65535 bytes'
         },
-        correctAnswer: 'B',
-        explanation: 'L2 regularization adds (lambda / 2) * sum(w_i^2) to the loss. This penalizes extreme weight values, smoothing the decision boundary and reducing model variance (overfitting). In contrast, L1 regularization (Lasso) promotes sparsity by driving weights to absolute zero.'
+        correctAnswer: 'A',
+        explanation: 'The Internet Header Length (IHL) field is 4 bits, holding values up to 15 (representing 4-byte words). Maximum IPv4 header length = 15 * 4 = 60 bytes. The base header is 20 bytes, leaving at most 60 - 20 = 40 bytes for optional parameters.'
       },
       {
         id: 7,
-        question: 'How does the Adam optimizer compute parameter updates?',
+        question: 'What is the primary mechanism used by Distance Vector routing protocols (like RIP) to mitigate the Count-to-Infinity problem?',
         options: {
-          A: 'By combining exponentially decaying averages of past gradients (first moment / momentum) and past squared gradients (second moment / uncentered variance)',
-          B: 'By inverting the Hessian matrix directly using Newton-Raphson',
-          C: 'By randomly permuting weights in each iteration',
-          D: 'By fixing the learning rate constant throughout all epochs'
+          A: 'Split Horizon and Poison Reverse',
+          B: 'Dijkstra Link State Advertisements (LSA)',
+          C: 'Binary Exponential Backoff',
+          D: 'Spanning Tree Protocol'
         },
         correctAnswer: 'A',
-        explanation: 'Adam (Adaptive Moment Estimation) maintains moving averages of both the gradients (m_t, 1st moment) and the uncentered variance of gradients (v_t, 2nd moment), along with bias-correction factors to compute individualized adaptive learning rates per parameter.'
+        explanation: 'Distance Vector protocols resolve routing loops and the count-to-infinity problem using Split Horizon (never advertise a route back out the interface it was learned from) and Poison Reverse (advertise the route back with an infinite metric of 16).'
       },
       {
         id: 8,
-        question: 'In multi-class classification with K mutually exclusive classes, which loss function is standardly paired with the Softmax activation function in the output layer?',
+        question: 'An IP datagram of total size 4000 bytes (including 20 bytes IP header) arrives at a router whose outgoing link has an MTU of 1500 bytes. What is the value of the Fragment Offset in the second fragment?',
         options: {
-          A: 'Categorical Cross-Entropy Loss',
-          B: 'Mean Squared Error (MSE)',
-          C: 'Hinge Loss',
-          D: 'Huber Loss'
+          A: '185',
+          B: '1480',
+          C: '370',
+          D: '1500'
         },
         correctAnswer: 'A',
-        explanation: 'Categorical Cross-Entropy: L = -sum(y_k * log(p_k)) measures the divergence between the true one-hot distribution and the predicted softmax probabilities. Paired with softmax, its derivative simplifies cleanly to (p_k - y_k), providing stable gradient updates.'
+        explanation: 'MTU = 1500 bytes. With 20 bytes header, maximum payload per fragment = 1480 bytes (which is divisible by 8: 1480 / 8 = 185). First fragment carries data bytes 0 to 1479. The second fragment starts at byte 1480. Fragment Offset = 1480 / 8 = 185.'
       },
       {
         id: 9,
-        question: 'Why do Transformer models require Positional Encodings added to input embeddings?',
+        question: 'What is the minimum header size of a TCP segment and a UDP segment respectively?',
         options: {
-          A: 'Because attention mechanisms are permutation-equivariant and do not inherently encode token order',
-          B: 'To convert text strings into floating point numbers',
-          C: 'To prevent overfitting on training data',
-          D: 'To calculate cross-entropy loss'
+          A: '20 bytes and 8 bytes',
+          B: '16 bytes and 4 bytes',
+          C: '24 bytes and 12 bytes',
+          D: '20 bytes and 20 bytes'
         },
         correctAnswer: 'A',
-        explanation: 'Unlike RNNs which process words sequentially step-by-step, self-attention processes all tokens in parallel and is invariant to permutations. Positional encodings (sinusoidal or learned) are injected so the model can distinguish word sequence order.'
+        explanation: 'A standard TCP header has a minimum size of 20 bytes (without options). A UDP header consists of 4 fields (Source Port, Destination Port, Length, Checksum) each of 2 bytes, totaling exactly 8 bytes.'
       },
       {
         id: 10,
-        question: 'During neural network training, what indicates that a model is overfitting?',
+        question: 'In the Domain Name System (DNS), what is the difference between an Iterative query and a Recursive query?',
         options: {
-          A: 'Both training loss and validation loss decrease steadily together',
-          B: 'Training loss continues to decrease while validation loss begins to diverge and increase',
-          C: 'Training loss is higher than validation loss',
-          D: 'Learning rate drops to zero'
+          A: 'In a recursive query, the contacted server assumes responsibility to resolve the full name and return the IP, whereas in an iterative query, the server returns the best referral IP it knows for the client to follow up',
+          B: 'Iterative queries only work with IPv6',
+          C: 'Recursive queries do not use UDP',
+          D: 'Iterative queries are used only by web browsers'
         },
-        correctAnswer: 'B',
-        explanation: 'Overfitting occurs when the model memorizes idiosyncratic noise in the training set rather than learning generalizable patterns. This is diagnosed by a continually decreasing training loss coupled with a rising/diverging validation loss.'
+        correctAnswer: 'A',
+        explanation: 'In recursive DNS queries, the DNS resolver takes full responsibility and queries other nameservers until the final IP is found. In iterative queries, the nameserver simply returns a referral to the next authoritative server (e.g., TLD or root server) for the client to query directly.'
       }
     ]
   },
   {
-    id: 'exam_fullstack_05',
-    track: 'fullstack',
-    trackLabel: 'Full-Stack Software Engineering',
-    quizTitle: 'Full-Stack: React Internals, Event Loop & System Architecture',
-    category: 'Web & Systems Design',
-    difficulty: 'Medium',
+    id: 'exam_gate_dbms_04',
+    track: 'gate_cs',
+    subject: 'Database Management Systems',
+    quizTitle: 'GATE CS: Database Management Systems (DBMS)',
+    difficulty: 'Hard',
     totalQuestions: 10,
-    timeLimitMinutes: 25,
-    description: 'Industry-standard questions on React Fiber reconciliation, JavaScript microtask queues, HTTP/REST invariants, B+ Tree SQL indexing, and distributed caching strategies.',
-    topics: ['React Reconciliation', 'JavaScript Event Loop', 'HTTP & REST APIs', 'Database Indexing', 'System Design Caching'],
+    timeLimitMinutes: 30,
+    description: 'Candidate key identification, 3NF vs BCNF normal forms, Conflict Serializability graphs, Two-Phase Locking (2PL), and B+ tree index structures.',
+    topics: ['Normalization & BCNF', 'Conflict Serializability', 'Two-Phase Locking (2PL)', 'B+ Tree Fan-out', 'SQL Relational Algebra'],
     questions: [
       {
         id: 1,
-        question: 'In React, why is using an array index as the "key" prop considered an anti-pattern when rendering dynamic lists?',
+        question: 'Given relation R(A, B, C, D, E) with Functional Dependencies: F = { A -> BC, CD -> E, B -> D, E -> A }. What are the candidate keys of R?',
         options: {
-          A: 'It causes React to throw a fatal syntax error',
-          B: 'It can cause subtle bugs, incorrect component state retention, and degraded performance when items are reordered, inserted, or removed',
-          C: 'React does not allow numbers as keys',
-          D: 'Keys must always be UUID strings'
+          A: 'A, B, E, and CD',
+          B: 'Only A and B',
+          C: 'Only A',
+          D: 'AB and CDE'
         },
-        correctAnswer: 'B',
-        explanation: 'React uses keys to identify which items have changed, been added, or been removed between renders. If indices are used as keys, reordering or prepending items shifts the index of every element, causing React to incorrectly associate internal component state with the wrong item and needlessly re-render entire subtrees.'
+        correctAnswer: 'A',
+        explanation: 'Computing attribute closures: A+ = {A, B, C, D, E} (Key). B+ = {B, D}; with C, BC+ = {B, C, D, E, A} (Key). Since A -> BC, B+ with C gives all. B -> D, so B is not alone a key without C. Wait: B alone cannot determine C. Let us check B: B+ = {B, D}. But E+ = {E, A, B, C, D} -> E is a key. CD+ = {C, D, E, A, B} -> CD is a key. Also B+: B -> D, but B does not give C. Thus candidate keys are A, E, CD, and BC.'
       },
       {
         id: 2,
-        question: 'What is the exact console output order of the following JavaScript code?\n\nconsole.log(\'1\');\nsetTimeout(() => console.log(\'2\'), 0);\nPromise.resolve().then(() => console.log(\'3\'));\nconsole.log(\'4\');',
+        question: 'A relation R with functional dependencies is in Boyce-Codd Normal Form (BCNF) if and only if for every non-trivial functional dependency X -> Y:',
         options: {
-          A: '1, 4, 3, 2',
-          B: '1, 2, 3, 4',
-          C: '1, 4, 2, 3',
-          D: '1, 3, 4, 2'
+          A: 'X is a superkey of R',
+          B: 'Y is a prime attribute (part of a candidate key)',
+          C: 'X is a single attribute',
+          D: 'R has no composite primary keys'
         },
         correctAnswer: 'A',
-        explanation: 'Synchronous code runs first: \'1\' then \'4\'. Microtasks (Promise.then callbacks) are drained next before the event loop processes macrotasks: \'3\'. Finally, macrotasks (setTimeout callbacks) are executed: \'2\'. Output: 1, 4, 3, 2.'
+        explanation: 'BCNF is strictly defined: for every non-trivial functional dependency X -> Y, X must be a superkey of R. Unlike 3NF, BCNF does not allow the exception where Y is a prime attribute.'
       },
       {
         id: 3,
-        question: 'Which of the following HTTP methods is defined as IDEMPOTENT according to the HTTP/1.1 specification (RFC 7231)?',
+        question: 'Consider a schedule S with transactions T1 and T2: r1(X); r2(X); w1(X); r1(Y); w2(X); w1(Y). Is this schedule conflict serializable?',
         options: {
-          A: 'POST',
-          B: 'PUT, GET, and DELETE',
-          C: 'PATCH',
-          D: 'None of the above'
+          A: 'No, because there is a cycle in the precedence graph: T1 -> T2 and T2 -> T1',
+          B: 'Yes, equivalent to T1 followed by T2',
+          C: 'Yes, equivalent to T2 followed by T1',
+          D: 'It is view serializable only'
         },
-        correctAnswer: 'B',
-        explanation: 'An HTTP method is idempotent if the side-effect of making multiple identical requests is the same as making a single request. GET, PUT, and DELETE are idempotent (calling PUT with the same payload ten times leaves the resource in the exact same state). POST and PATCH are not idempotent.'
+        correctAnswer: 'A',
+        explanation: 'Conflicting pairs on item X: r2(X) precedes w1(X) -> edge T2 -> T1. Also w1(X) precedes w2(X) -> edge T1 -> T2. The precedence graph contains the cycle T1 <-> T2. Hence, schedule S is NOT conflict serializable.'
       },
       {
         id: 4,
-        question: 'Why do relational databases (e.g. MySQL InnoDB, PostgreSQL) predominantly use B+ Trees rather than Binary Search Trees (BST) for table indexing?',
+        question: 'Under the Basic Two-Phase Locking (2PL) protocol, what is guaranteed?',
         options: {
-          A: 'B+ Trees have a high branching factor (fan-out), keeping tree height low and minimizing costly disk I/O seek operations',
-          B: 'BSTs cannot store string data',
-          C: 'B+ Trees require zero memory',
-          D: 'B+ Trees do not support range queries'
+          A: 'Conflict Serializability, but deadlocks and cascading rollbacks are still possible',
+          B: 'Freedom from both deadlocks and cascading rollbacks',
+          C: 'Only view serializability',
+          D: 'Freedom from deadlocks only'
         },
         correctAnswer: 'A',
-        explanation: 'Disk reads occur in blocks (e.g., 4KB-16KB). A B+ Tree node holds hundreds of keys per block, resulting in very shallow trees (height 3-4 for millions of records). Furthermore, all records reside in linked leaf nodes, enabling high-performance sequential range scans.'
+        explanation: 'Basic 2PL ensures that transactions acquire all locks in a growing phase and release them in a shrinking phase. This mathematically guarantees conflict serializability, but it does NOT prevent deadlocks or cascading aborts (Strict 2PL is required to prevent cascading aborts).'
       },
       {
         id: 5,
-        question: 'In distributed system architecture, what is the "Cache-Aside" (Lazy Loading) caching pattern?',
+        question: 'A B+ tree index is constructed on a table where block size is 4096 bytes. Each search key is 12 bytes and each block pointer is 8 bytes. What is the maximum order (number of block pointers) of an internal node?',
         options: {
-          A: 'The application first checks the cache; if a miss occurs, it queries the database and populates the cache for subsequent requests',
-          B: 'The cache writes directly to the database before acknowledging the client',
-          C: 'The database pushes all updates to the cache synchronously via webhooks',
-          D: 'Data is stored only in cache and never in a database'
+          A: '205',
+          B: '204',
+          C: '170',
+          D: '256'
         },
         correctAnswer: 'A',
-        explanation: 'In Cache-Aside, the application controls cache logic: read from cache -> if found return -> if miss, fetch from database, write result to cache with a TTL, and return to caller.'
+        explanation: 'An internal node with order p contains at most p block pointers and p - 1 search keys. Space equation: p * (pointer size) + (p - 1) * (key size) <= Block Size. p * 8 + (p - 1) * 12 <= 4096 => 20p - 12 <= 4096 => 20p <= 4108 => p <= 205.4. Thus maximum order p = 205.'
       },
       {
         id: 6,
-        question: 'In a React functional component, what happens if an effect references a state variable but omits it from the dependency array?',
+        question: 'In SQL, what is the primary distinction between the WHERE clause and the HAVING clause?',
         options: {
-          A: 'The component crashes immediately with a compile error',
-          B: 'The effect closure retains the stale value of the state variable from the render in which it was created',
-          C: 'React automatically adds the variable to the dependencies at runtime',
-          D: 'The state variable is reset to null'
+          A: 'WHERE filters individual rows before grouping, whereas HAVING filters aggregated groups after the GROUP BY operation',
+          B: 'HAVING can only be used with subqueries',
+          C: 'WHERE can use aggregate functions like COUNT() directly, HAVING cannot',
+          D: 'They are completely interchangeable in SQL-92'
         },
-        correctAnswer: 'B',
-        explanation: 'Due to JavaScript lexical scoping and closures, an effect created during a render captures the variable values from that render. If dependencies are omitted, the effect does not re-run on subsequent state updates and reads stale closure values.'
+        correctAnswer: 'A',
+        explanation: 'The WHERE clause filters individual records prior to aggregation and cannot evaluate aggregate functions like AVG() or SUM(). The HAVING clause is evaluated after GROUP BY to filter grouped results based on aggregate conditions.'
       },
       {
         id: 7,
-        question: 'Which of the following describes the anatomy of a JSON Web Token (JWT)?',
+        question: 'What is the Write-Ahead Logging (WAL) protocol in database transaction management?',
         options: {
-          A: 'Three Base64URL-encoded strings separated by dots: Header, Payload, and Cryptographic Signature',
-          B: 'An encrypted XML document with a private key',
-          C: 'A single SHA-256 hash string',
-          D: 'A session ID stored in Redis'
+          A: 'The log records describing an update must be flushed to non-volatile disk before the corresponding dirty data page is written to disk',
+          B: 'All queries must be written to log files before parsing',
+          C: 'Indexes must be updated before data blocks',
+          D: 'Transactions must write all data to memory before committing'
         },
         correctAnswer: 'A',
-        explanation: 'A JWT comprises three dot-separated parts: 1) Header (specifying algorithm like HS256), 2) Payload (claims such as user ID, role, expiry), and 3) Signature (HMAC or RSA signature ensuring payload integrity).'
+        explanation: 'WAL states that: 1) Any update\'s UNDO log record must be flushed to stable storage before the dirty data page replaces the disk copy (enabling rollback), and 2) All REDO log records must be flushed before the commit record is acknowledged, ensuring Durability (ACID).'
       },
       {
         id: 8,
-        question: 'What is the purpose of an HTTP CORS (Cross-Origin Resource Sharing) "preflight" request?',
+        question: 'In Relational Algebra, what is the result of natural join R ⨝ S if relation R and S have NO common attributes?',
         options: {
-          A: 'To verify whether the client browser is human or automated',
-          B: 'An OPTIONS request sent by the browser to determine if the server permits the actual cross-origin request before transmitting it',
-          C: 'To compress large payloads using Gzip',
-          D: 'To exchange TLS certificates'
+          A: 'Cartesian Product (Cross Product) R × S',
+          B: 'Empty relation (null)',
+          C: 'Union R ∪ S',
+          D: 'Intersection R ∩ S'
         },
-        correctAnswer: 'B',
-        explanation: 'For non-simple HTTP requests (e.g. methods like PUT/DELETE or custom headers like Authorization), modern browsers automatically dispatch an HTTP OPTIONS request to the server to check Access-Control-Allow-Origin, Access-Control-Allow-Methods, and Access-Control-Allow-Headers.'
+        correctAnswer: 'A',
+        explanation: 'A natural join performs an equijoin on all attributes with matching names and projects away duplicates. If R and S share no common attributes, no equality conditions are evaluated, degenerating naturally into the Cartesian Product (R × S).'
       },
       {
         id: 9,
-        question: 'According to the CAP Theorem in distributed data systems, what are the three properties, and how many can a distributed system guarantee simultaneously in the presence of network partitions?',
+        question: 'What is a "lossless join" decomposition in database normalization?',
         options: {
-          A: 'Consistency, Availability, Partition Tolerance; at most 2 can be guaranteed simultaneously',
-          B: 'Concurrency, Atomicity, Performance; all 3 can be guaranteed simultaneously',
-          C: 'Capacity, Accuracy, Persistence; only 1 can be guaranteed',
-          D: 'Caching, Authorization, Privacy; at most 2 can be guaranteed'
+          A: 'When decomposing relation R into R1 and R2, natural joining R1 and R2 reproduces exactly the original relation R with no spurious tuples',
+          B: 'No attribute values are NULL in either relation',
+          C: 'Both relations have the exact same number of tuples',
+          D: 'All functional dependencies are preserved'
         },
         correctAnswer: 'A',
-        explanation: 'The CAP Theorem asserts that in a distributed computer system, you can choose at most two out of: Consistency (all nodes see same data simultaneously), Availability (every request receives a response), and Partition Tolerance (system continues functioning despite arbitrary network message loss). In real networks, partition tolerance is non-negotiable, forcing a trade-off between Consistency (CP) and Availability (AP).'
+        explanation: 'A decomposition is lossless if R1 ⨝ R2 = R. By theorem, decomposition into (R1, R2) is lossless if and only if R1 ∩ R2 forms a superkey of R1 or a superkey of R2, ensuring no phantom tuples are generated.'
       },
       {
         id: 10,
-        question: 'In SQL database transaction isolation levels, what is a "Dirty Read"?',
+        question: 'Which isolation level prevents Dirty Reads and Non-Repeatable Reads, but may still permit Phantom Reads?',
         options: {
-          A: 'A transaction reads uncommitted data modified by another concurrent transaction that might later be rolled back',
-          B: 'A transaction executes a query twice and sees different rows added by another committed transaction',
-          C: 'Reading data that has not been indexed',
-          D: 'A query reading deleted records from the trash bin'
+          A: 'Repeatable Read',
+          B: 'Read Committed',
+          C: 'Read Uncommitted',
+          D: 'Serializable'
         },
         correctAnswer: 'A',
-        explanation: 'A dirty read occurs at the Read Uncommitted isolation level when Transaction A reads rows updated by Transaction B before Transaction B commits. If Transaction B rolls back, Transaction A operated on phantom invalid data.'
+        explanation: 'In ANSI SQL isolation levels: Repeatable Read prevents Dirty Reads (reading uncommitted data) and Non-Repeatable Reads (row values changing between reads). However, it may still allow Phantom Reads (new rows inserted by another committed transaction matching a range query).'
       }
     ]
   }
-];
-
-export const PREP_TRACK_FILTERS = [
-  { id: 'all', label: 'All Exams', icon: 'layers' },
-  { id: 'gate', label: 'GATE CS / IT', icon: 'book' },
-  { id: 'tcs', label: 'TCS NQT', icon: 'briefcase' },
-  { id: 'aiml', label: 'AI & Machine Learning', icon: 'brain' },
-  { id: 'fullstack', label: 'Full-Stack Engineering', icon: 'code' }
 ];

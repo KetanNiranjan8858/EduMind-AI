@@ -505,6 +505,7 @@ export default function App() {
       <>
         <ExamPrepDashboard
           currentUser={currentUser}
+          examHistory={examHistory}
           onLaunchExam={handleLaunchExam}
           onReturnToStudio={handleReturnToStudio}
           onRequireLogin={() => {
