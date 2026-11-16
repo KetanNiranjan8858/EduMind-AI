@@ -3,11 +3,23 @@ import db from '../config/db.js';
 
 export async function getExamHistory(req, res) {
   try {
-    const { workspaceId = 'ws_default' } = req.query;
-    const history = await db.query(
-      'SELECT * FROM exam_attempts WHERE workspace_id = ? ORDER BY submitted_at DESC',
-      [workspaceId]
-    );
+    const { workspaceId = 'ws_default', userId, candidateId } = req.query;
+
+    let history = [];
+    if (userId || candidateId) {
+      // Query history for that specific logged-in ID
+      const queryId = userId || candidateId;
+      history = await db.query(
+        'SELECT * FROM exam_attempts WHERE user_id = ? OR candidate_id = ? ORDER BY submitted_at DESC',
+        [queryId, candidateId || queryId]
+      );
+    } else {
+      // Fallback to workspace history if not logged in
+      history = await db.query(
+        'SELECT * FROM exam_attempts WHERE workspace_id = ? ORDER BY submitted_at DESC',
+        [workspaceId]
+      );
+    }
 
     // Parse JSON fields if they are strings
     const parsed = history.map(item => ({
@@ -31,6 +43,10 @@ export async function saveExamAttempt(req, res) {
   try {
     const {
       workspaceId = 'ws_default',
+      userId = null,
+      candidateId = null,
+      userEmail = null,
+      userName = null,
       quiz,
       userAnswers = {},
       questionTimes = {},
@@ -54,14 +70,19 @@ export async function saveExamAttempt(req, res) {
 
     await db.query(
       `INSERT INTO exam_attempts (
-        id, workspace_id, quiz_id, quiz_title, difficulty,
+        id, workspace_id, user_id, candidate_id, user_email, user_name,
+        quiz_id, quiz_title, difficulty,
         total_questions, attempted_count, correct_count, incorrect_count,
         accuracy_percentage, overall_percentage, time_taken_seconds,
         quiz_json, user_answers_json, question_times_json
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         workspaceId,
+        userId,
+        candidateId,
+        userEmail,
+        userName,
         quiz.id || id,
         quizTitle,
         difficulty,
@@ -80,8 +101,10 @@ export async function saveExamAttempt(req, res) {
 
     return res.status(201).json({
       success: true,
-      message: 'Exam attempt saved to workspace history',
-      attemptId: id
+      message: 'Exam attempt saved to candidate history',
+      attemptId: id,
+      candidateId,
+      userId
     });
   } catch (err) {
     console.error('[History API] Error saving exam attempt:', err);

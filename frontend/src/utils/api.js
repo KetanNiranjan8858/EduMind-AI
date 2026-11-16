@@ -155,14 +155,28 @@ export async function clearChatHistory(workspaceId = 'ws_default') {
 }
 
 // ================= EXAM HISTORY =================
-export async function fetchExamHistory(workspaceId = 'ws_default') {
-  const res = await fetch(`${API_BASE}/history?workspaceId=${workspaceId}`);
+export async function fetchExamHistory(options = 'ws_default') {
+  let url = `${API_BASE}/history`;
+  if (typeof options === 'string') {
+    url += `?workspaceId=${encodeURIComponent(options)}`;
+  } else {
+    const { workspaceId = 'ws_default', userId, candidateId } = options || {};
+    url += `?workspaceId=${encodeURIComponent(workspaceId)}`;
+    if (userId) url += `&userId=${encodeURIComponent(userId)}`;
+    if (candidateId) url += `&candidateId=${encodeURIComponent(candidateId)}`;
+  }
+
+  const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to fetch exam history');
   return await res.json();
 }
 
 export async function saveExamAttempt({
   workspaceId = 'ws_default',
+  userId = null,
+  candidateId = null,
+  userEmail = null,
+  userName = null,
   quiz,
   userAnswers,
   questionTimes,
@@ -174,6 +188,10 @@ export async function saveExamAttempt({
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       workspaceId,
+      userId,
+      candidateId,
+      userEmail,
+      userName,
       quiz,
       userAnswers,
       questionTimes,

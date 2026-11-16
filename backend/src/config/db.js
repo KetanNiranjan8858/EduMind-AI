@@ -163,11 +163,15 @@ export async function initDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
-    // 4. Exam Attempts
+    // 4. Exam Attempts (Linked to workspace and candidate user ID)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS exam_attempts (
         id VARCHAR(64) PRIMARY KEY,
         workspace_id VARCHAR(64) NOT NULL,
+        user_id VARCHAR(64) DEFAULT NULL,
+        candidate_id VARCHAR(64) DEFAULT NULL,
+        user_email VARCHAR(150) DEFAULT NULL,
+        user_name VARCHAR(150) DEFAULT NULL,
         quiz_id VARCHAR(64),
         quiz_title VARCHAR(255) NOT NULL,
         difficulty VARCHAR(50) NOT NULL,
@@ -183,6 +187,8 @@ export async function initDB() {
         question_times_json LONGTEXT NOT NULL,
         submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_workspace_attempts (workspace_id),
+        INDEX idx_user_attempts (user_id),
+        INDEX idx_candidate_attempts (candidate_id),
         INDEX idx_submitted_at (submitted_at DESC)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
@@ -387,51 +393,103 @@ export async function query(sql, params = []) {
     return { affectedRows: prevLen - store.sources.length };
   }
 
-  // EXAM ATTEMPTS (HISTORY)
-  if (lowerSql.startsWith('select * from exam_attempts where workspace_id =')) {
-    const wsId = params[0];
-    return store.exam_attempts
-      .filter(a => a.workspace_id === wsId)
-      .sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
-  }
+  // EXAM ATTEMPTS (HISTORY) - Supports Candidate ID & User ID
   if (lowerSql.startsWith('select * from exam_attempts where id =')) {
     const id = params[0];
-    const found = store.exam_attempts.find(a => a.id === id);
+    const found = (store.exam_attempts || []).find(a => a.id === id);
     return found ? [found] : [];
   }
-  if (lowerSql.startsWith('insert into exam_attempts')) {
-    const [
-      id, workspace_id, quiz_id, quiz_title, difficulty,
-      total_questions, attempted_count, correct_count, incorrect_count,
-      accuracy_percentage, overall_percentage, time_taken_seconds,
-      quiz_json, user_answers_json, question_times_json
-    ] = params;
+  if (lowerSql.startsWith('select * from exam_attempts')) {
+    let list = [...(store.exam_attempts || [])];
 
-    const attempt = {
-      id,
-      workspace_id: workspace_id || 'ws_default',
-      quiz_id,
-      quiz_title,
-      difficulty,
-      total_questions: Number(total_questions),
-      attempted_count: Number(attempted_count),
-      correct_count: Number(correct_count),
-      incorrect_count: Number(incorrect_count),
-      accuracy_percentage: Number(accuracy_percentage),
-      overall_percentage: Number(overall_percentage),
-      time_taken_seconds: Number(time_taken_seconds),
-      quiz_json,
-      user_answers_json,
-      question_times_json,
-      submitted_at: new Date().toISOString()
-    };
+    // Filter by candidate_id or user_id if provided
+    if (lowerSql.includes('user_id =') || lowerSql.includes('candidate_id =')) {
+      const p1 = params[0];
+      const p2 = params[1] || p1;
+      list = list.filter(a =>
+        (a.user_id && (a.user_id === p1 || a.user_id === p2)) ||
+        (a.candidate_id && (a.candidate_id === p1 || a.candidate_id === p2))
+      );
+    } else if (lowerSql.includes('workspace_id =')) {
+      const wsId = params[0];
+      list = list.filter(a => a.workspace_id === wsId);
+    }
+
+    return list.sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
+  }
+  if (lowerSql.startsWith('insert into exam_attempts')) {
+    let attempt;
+    if (params.length >= 19) {
+      const [
+        id, workspace_id, user_id, candidate_id, user_email, user_name,
+        quiz_id, quiz_title, difficulty,
+        total_questions, attempted_count, correct_count, incorrect_count,
+        accuracy_percentage, overall_percentage, time_taken_seconds,
+        quiz_json, user_answers_json, question_times_json
+      ] = params;
+
+      attempt = {
+        id,
+        workspace_id: workspace_id || 'ws_default',
+        user_id: user_id || null,
+        candidate_id: candidate_id || null,
+        user_email: user_email || null,
+        user_name: user_name || null,
+        quiz_id,
+        quiz_title,
+        difficulty,
+        total_questions: Number(total_questions),
+        attempted_count: Number(attempted_count),
+        correct_count: Number(correct_count),
+        incorrect_count: Number(incorrect_count),
+        accuracy_percentage: Number(accuracy_percentage),
+        overall_percentage: Number(overall_percentage),
+        time_taken_seconds: Number(time_taken_seconds),
+        quiz_json,
+        user_answers_json,
+        question_times_json,
+        submitted_at: new Date().toISOString()
+      };
+    } else {
+      const [
+        id, workspace_id, quiz_id, quiz_title, difficulty,
+        total_questions, attempted_count, correct_count, incorrect_count,
+        accuracy_percentage, overall_percentage, time_taken_seconds,
+        quiz_json, user_answers_json, question_times_json
+      ] = params;
+
+      attempt = {
+        id,
+        workspace_id: workspace_id || 'ws_default',
+        user_id: null,
+        candidate_id: null,
+        user_email: null,
+        user_name: null,
+        quiz_id,
+        quiz_title,
+        difficulty,
+        total_questions: Number(total_questions),
+        attempted_count: Number(attempted_count),
+        correct_count: Number(correct_count),
+        incorrect_count: Number(incorrect_count),
+        accuracy_percentage: Number(accuracy_percentage),
+        overall_percentage: Number(overall_percentage),
+        time_taken_seconds: Number(time_taken_seconds),
+        quiz_json,
+        user_answers_json,
+        question_times_json,
+        submitted_at: new Date().toISOString()
+      };
+    }
+
+    if (!store.exam_attempts) store.exam_attempts = [];
     store.exam_attempts.unshift(attempt);
     writeFallback(store);
-    return { affectedRows: 1, insertId: id };
+    return { affectedRows: 1, insertId: attempt.id };
   }
   if (lowerSql.startsWith('delete from exam_attempts where id =')) {
     const id = params[0];
-    store.exam_attempts = store.exam_attempts.filter(a => a.id !== id);
+    store.exam_attempts = (store.exam_attempts || []).filter(a => a.id !== id);
     writeFallback(store);
     return { affectedRows: 1 };
   }

@@ -18,6 +18,7 @@ export default function HistoryModal({
   onClose,
   history = [],
   activeWorkspace,
+  currentUser,
   onReviewAttempt,
   onRetakeAttempt,
   onDeleteAttempt
@@ -34,14 +35,24 @@ export default function HistoryModal({
               <History className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-bold text-slate-100 text-sm">Exam Attempt History</h3>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-mono bg-dark-950 text-brand-300 border border-brand-500/20">
-                  {activeWorkspace?.name || 'Workspace'}
-                </span>
+                {currentUser ? (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-mono bg-brand-500/15 text-brand-300 border border-brand-500/30 flex items-center gap-1">
+                    <span>ID:</span>
+                    <strong>{currentUser.candidateId}</strong>
+                    <span>• {currentUser.name}</span>
+                  </span>
+                ) : (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-mono bg-dark-950 text-brand-300 border border-brand-500/20">
+                    {activeWorkspace?.name || 'Workspace'}
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-slate-400">
-                Review past submissions, accuracy metrics, and AI explanations
+                {currentUser
+                  ? `Filtered for candidate ID ${currentUser.candidateId}. Review solutions and timings.`
+                  : 'Review past submissions, accuracy metrics, and AI explanations'}
               </p>
             </div>
           </div>
@@ -88,6 +99,11 @@ export default function HistoryModal({
                     >
                       {attempt.difficulty}
                     </span>
+                    {(attempt.candidate_id || attempt.user_email) && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-dark-950 text-slate-300 border border-slate-800 font-mono">
+                        Candidate ID: {attempt.candidate_id || attempt.user_email}
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-4 text-xs font-mono text-slate-400 flex-wrap">

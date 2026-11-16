@@ -181,7 +181,11 @@ export default function App() {
       setLoadingSources(true);
       const [srcRes, histRes] = await Promise.all([
         fetchSources(wsId),
-        fetchExamHistory(wsId).catch(() => ({ history: [] }))
+        fetchExamHistory({
+          workspaceId: wsId,
+          userId: currentUser?.id,
+          candidateId: currentUser?.candidateId
+        }).catch(() => ({ history: [] }))
       ]);
 
       if (srcRes.sources) {
@@ -201,6 +205,23 @@ export default function App() {
       setLoadingSources(false);
     }
   }
+
+  // Refresh candidate exam history whenever candidate logs in or logs out
+  useEffect(() => {
+    async function syncCandidateHistory() {
+      try {
+        const histRes = await fetchExamHistory({
+          workspaceId: activeWorkspaceId,
+          userId: currentUser?.id,
+          candidateId: currentUser?.candidateId
+        });
+        if (histRes.history) setExamHistory(histRes.history);
+      } catch (err) {
+        console.warn('Failed to sync history for candidate:', err);
+      }
+    }
+    syncCandidateHistory();
+  }, [currentUser]);
 
   function handleTogglePin(wsId, e) {
     if (e) e.stopPropagation();
@@ -363,17 +384,25 @@ export default function App() {
       submissionData.questionTimes
     );
 
-    // Persist attempt in DB history
+    // Persist attempt in DB history linked to Candidate ID
     try {
       await saveExamAttempt({
         workspaceId: activeWorkspaceId,
+        userId: currentUser?.id || null,
+        candidateId: currentUser?.candidateId || null,
+        userEmail: currentUser?.email || null,
+        userName: currentUser?.name || null,
         quiz: submissionData.quiz,
         userAnswers: submissionData.userAnswers,
         questionTimes: submissionData.questionTimes,
         timeTakenSeconds: submissionData.timeTakenSeconds,
         stats
       });
-      const histRes = await fetchExamHistory(activeWorkspaceId);
+      const histRes = await fetchExamHistory({
+        workspaceId: activeWorkspaceId,
+        userId: currentUser?.id,
+        candidateId: currentUser?.candidateId
+      });
       if (histRes.history) setExamHistory(histRes.history);
     } catch (err) {
       console.warn('Failed to persist exam attempt to DB:', err);
@@ -611,6 +640,7 @@ export default function App() {
         onClose={() => setIsHistoryModalOpen(false)}
         history={examHistory}
         activeWorkspace={activeWorkspace}
+        currentUser={currentUser}
         onReviewAttempt={handleReviewPastAttempt}
         onRetakeAttempt={handleRetakePastAttempt}
         onDeleteAttempt={handleDeletePastAttempt}
