@@ -5,24 +5,14 @@ import {
   ArrowLeft,
   Sparkles,
   BookOpen,
-  Briefcase,
-  Code,
-  Layers,
   Search,
   Play,
   Clock,
-  CheckCircle2,
   AlertCircle,
   Send,
   Loader2,
   Trash2,
-  User,
-  Shield,
-  HelpCircle,
-  ExternalLink,
-  Zap,
-  Award,
-  ChevronRight
+  User
 } from 'lucide-react';
 import { CURATED_EXAMS, PREP_TRACK_FILTERS } from '../data/curatedExams';
 import { sendChatMessage } from '../utils/api';
@@ -35,22 +25,9 @@ export default function ExamPrepDashboard({
 }) {
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedExamForPreview, setSelectedExamForPreview] = useState(null);
 
-  // Dedicated AI Prep Tutor Chat State
-  const defaultWelcomeMessage = {
-    id: 'prep-welcome',
-    sender: 'ai',
-    text: `### Welcome to the Exam Prep AI Tutor 🎓✨
-
-I am your dedicated academic and competitive exam mentor. I have access to our pre-seeded question banks across **GATE CS/IT**, **TCS NQT**, **AI & Machine Learning**, and **Full-Stack Engineering**.
-
-- Ask for **step-by-step explanations** of any tricky concept or formula.
-- Inquire about **exam strategies**, time management, or typical question patterns.
-- Click any quick topic pill below or ask your own question!`
-  };
-
-  const [chatMessages, setChatMessages] = useState([defaultWelcomeMessage]);
+  // AI Assistant Chat State (Starts clean, no demo/default messages)
+  const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [isAiThinking, setIsAiThinking] = useState(false);
   const chatEndRef = useRef(null);
@@ -90,7 +67,7 @@ I am your dedicated academic and competitive exam mentor. I have access to our p
       const res = await sendChatMessage({
         sourceIds: [],
         messages: chatMessages.map((m) => ({ sender: m.sender, text: m.text })),
-        userQuery: `[Context: Exam Preparation Benchmarks & Curated Questions] ${text}`,
+        userQuery: text,
         workspaceId: 'ws_exam_prep',
         userId: currentUser?.id || null
       });
@@ -98,7 +75,7 @@ I am your dedicated academic and competitive exam mentor. I have access to our p
       const aiMsg = {
         id: `ai-${Date.now()}`,
         sender: 'ai',
-        text: res.reply || 'Here is the conceptual breakdown for your question.'
+        text: res.reply || 'Here is the explanation for your query.'
       };
 
       setChatMessages((prev) => [...prev, aiMsg]);
@@ -108,7 +85,7 @@ I am your dedicated academic and competitive exam mentor. I have access to our p
         {
           id: `err-${Date.now()}`,
           sender: 'ai',
-          text: `⚠️ **AI Tutor Notice**: ${err.message || 'Could not fetch response. Please try again.'}`
+          text: `⚠️ **Notice**: ${err.message || 'Could not fetch response. Please try again.'}`
         }
       ]);
     } finally {
@@ -124,22 +101,8 @@ I am your dedicated academic and competitive exam mentor. I have access to our p
   }
 
   function handleClearChat() {
-    setChatMessages([
-      {
-        id: `cleared-${Date.now()}`,
-        sender: 'ai',
-        text: 'Prep chat conversation cleared. Feel free to ask a new question about any topic in the question bank!'
-      }
-    ]);
+    setChatMessages([]);
   }
-
-  const promptSuggestions = [
-    'Explain Paging vs Segmentation in OS',
-    'How does Banker\'s Algorithm avoid deadlocks?',
-    'Explain Self-Attention formula in Transformers',
-    'Time complexity of QuickSort vs MergeSort',
-    'Common pitfalls in TCS NQT coding round'
-  ];
 
   return (
     <div className="h-screen flex flex-col bg-dark-950 text-slate-100 overflow-hidden font-sans">
@@ -149,7 +112,7 @@ I am your dedicated academic and competitive exam mentor. I have access to our p
           <button
             type="button"
             onClick={onReturnToStudio}
-            className="px-3 py-1.5 bg-dark-850 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+            className="px-3 py-1.5 bg-dark-850 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
             title="Return to Study Studio"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -163,8 +126,8 @@ I am your dedicated academic and competitive exam mentor. I have access to our p
               <Target className="w-4 h-4" />
             </div>
             <div>
-              <span className="font-extrabold text-sm tracking-tight text-white flex items-center gap-2">
-                Exam Prep Dashboard <span className="text-rose-400 font-mono text-[11px] font-bold">CBT Library</span>
+              <span className="font-extrabold text-sm tracking-tight text-white">
+                Exam Preparation
               </span>
             </div>
           </div>
@@ -172,11 +135,6 @@ I am your dedicated academic and competitive exam mentor. I have access to our p
 
         {/* User Identity & Info */}
         <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-400 hidden sm:inline-flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-            Question Database Ready
-          </span>
-
           {currentUser ? (
             <div className="px-3 py-1.5 bg-dark-850 border border-slate-700/80 rounded-xl text-xs flex items-center gap-2 text-slate-200">
               <div className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center font-bold text-[10px]">
@@ -188,7 +146,7 @@ I am your dedicated academic and competitive exam mentor. I have access to our p
             <button
               type="button"
               onClick={onRequireLogin}
-              className="px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+              className="px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
             >
               <User className="w-3 h-3" />
               <span>Login / Register</span>
@@ -197,9 +155,9 @@ I am your dedicated academic and competitive exam mentor. I have access to our p
         </div>
       </header>
 
-      {/* Main Split Body: Left = Exam Question Bank, Right = AI Concept Tutor */}
+      {/* Main Split Body: Left = Exam Question Bank, Right = AI Assistant */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Column: Curated Exam Papers (Pre-built Database) */}
+        {/* Left Column: Exam Question Bank */}
         <section className="flex-1 flex flex-col min-w-0 border-r border-slate-800 bg-dark-950 overflow-hidden">
           {/* Controls Bar: Track Filters + Search */}
           <div className="p-4 border-b border-slate-800 bg-dark-900/60 flex flex-col gap-3">
@@ -232,13 +190,13 @@ I am your dedicated academic and competitive exam mentor. I have access to our p
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search exam papers by topic, keyword, or concept..."
+                  placeholder="Search exams by topic, keyword, or title..."
                   className="w-full pl-9 pr-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-rose-500/60 transition-colors"
                 />
               </div>
 
               <div className="text-[11px] font-mono text-slate-400 shrink-0">
-                <span className="text-white font-bold">{filteredExams.length}</span> papers available
+                <span className="text-white font-bold">{filteredExams.length}</span> exams available
               </div>
             </div>
           </div>
@@ -248,7 +206,7 @@ I am your dedicated academic and competitive exam mentor. I have access to our p
             {filteredExams.length === 0 ? (
               <div className="p-12 text-center text-slate-500">
                 <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-600" />
-                <p className="text-xs">No exam papers found matching your search.</p>
+                <p className="text-xs">No exams found matching your search.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -332,9 +290,9 @@ I am your dedicated academic and competitive exam mentor. I have access to our p
           </div>
         </section>
 
-        {/* Right Column: AI Chat Area for Understanding Concepts */}
+        {/* Right Column: AI Assistant for Understanding Concepts */}
         <aside className="w-96 shrink-0 h-full flex flex-col bg-dark-900 border-l border-slate-800">
-          {/* AI Tutor Header */}
+          {/* AI Header */}
           <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-dark-850">
             <div className="flex items-center gap-2">
               <div className="p-1.5 bg-gradient-to-tr from-purple-500 to-rose-600 rounded-lg text-white shadow-sm">
@@ -342,74 +300,74 @@ I am your dedicated academic and competitive exam mentor. I have access to our p
               </div>
               <div>
                 <h3 className="text-xs font-bold text-slate-100 uppercase tracking-wider">
-                  AI Concept Tutor
+                  AI Assistant
                 </h3>
                 <p className="text-[10px] text-slate-400">
-                  Ask explanations, derivations & tips
+                  Ask any concept or doubt
                 </p>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={handleClearChat}
-              className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors"
-              title="Clear Tutor Conversation"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            {chatMessages.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearChat}
+                className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                title="Clear Conversation"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
           {/* Chat Messages Log */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3.5 text-xs bg-dark-950/40">
-            {chatMessages.map((msg) => {
-              const isUser = msg.sender === 'user';
-              return (
-                <div
-                  key={msg.id}
-                  className={`flex gap-2.5 ${isUser ? 'justify-end' : 'justify-start'}`}
-                >
-                  {!isUser && (
-                    <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-rose-500 to-purple-600 flex items-center justify-center text-white shrink-0 shadow-sm mt-0.5">
-                      <Brain className="w-3.5 h-3.5" />
-                    </div>
-                  )}
-
-                  <div
-                    className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 leading-relaxed ${
-                      isUser
-                        ? 'bg-rose-600 text-white rounded-tr-none'
-                        : 'bg-dark-900 border border-slate-800 text-slate-200 rounded-tl-none prose prose-invert prose-xs'
-                    }`}
-                  >
-                    <div className="whitespace-pre-wrap">{msg.text}</div>
-                  </div>
+            {chatMessages.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500">
+                <div className="w-10 h-10 rounded-xl bg-dark-900 border border-slate-800 flex items-center justify-center text-slate-400 mb-3 shadow-inner">
+                  <Brain className="w-5 h-5 text-rose-400" />
                 </div>
-              );
-            })}
+                <p className="text-xs text-slate-200 font-semibold">Exam AI Assistant</p>
+                <p className="text-[11px] text-slate-400 mt-1 max-w-[240px] leading-relaxed">
+                  Ask questions, concept derivations, or doubts regarding any exam topics.
+                </p>
+              </div>
+            ) : (
+              chatMessages.map((msg) => {
+                const isUser = msg.sender === 'user';
+                return (
+                  <div
+                    key={msg.id}
+                    className={`flex gap-2.5 ${isUser ? 'justify-end' : 'justify-start'}`}
+                  >
+                    {!isUser && (
+                      <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-rose-500 to-purple-600 flex items-center justify-center text-white shrink-0 shadow-sm mt-0.5">
+                        <Brain className="w-3.5 h-3.5" />
+                      </div>
+                    )}
+
+                    <div
+                      className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 leading-relaxed ${
+                        isUser
+                          ? 'bg-rose-600 text-white rounded-tr-none'
+                          : 'bg-dark-900 border border-slate-800 text-slate-200 rounded-tl-none prose prose-invert prose-xs'
+                      }`}
+                    >
+                      <div className="whitespace-pre-wrap">{msg.text}</div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
 
             {isAiThinking && (
               <div className="flex items-center gap-2 text-slate-400 text-xs py-1">
                 <Loader2 className="w-4 h-4 animate-spin text-rose-400" />
-                <span>AI Tutor is preparing concept explanation...</span>
+                <span>AI is analyzing...</span>
               </div>
             )}
 
             <div ref={chatEndRef} />
-          </div>
-
-          {/* Prompt Suggestions */}
-          <div className="p-2.5 border-t border-slate-800/80 bg-dark-900/60 overflow-x-auto no-scrollbar flex items-center gap-1.5">
-            {promptSuggestions.map((suggestion, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => handleSendChatMessage(suggestion)}
-                className="text-[10px] text-slate-300 hover:text-white bg-dark-950 hover:bg-dark-850 border border-slate-800 rounded-lg px-2.5 py-1 whitespace-nowrap transition-colors shrink-0"
-              >
-                {suggestion}
-              </button>
-            ))}
           </div>
 
           {/* Input Box */}
@@ -420,7 +378,7 @@ I am your dedicated academic and competitive exam mentor. I have access to our p
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={handleChatKeyDown}
-                placeholder="Ask AI Tutor to explain any topic or formula..."
+                placeholder="Type your question or doubt..."
                 className="w-full pl-3 pr-10 py-2 rounded-xl bg-dark-950 border border-slate-800 text-slate-100 placeholder:text-slate-500 text-xs focus:outline-none focus:border-rose-500/70 resize-none transition-colors"
               />
               <button
@@ -428,7 +386,7 @@ I am your dedicated academic and competitive exam mentor. I have access to our p
                 onClick={() => handleSendChatMessage()}
                 disabled={!chatInput.trim() || isAiThinking}
                 className="absolute right-2 p-1.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white rounded-lg transition-colors cursor-pointer"
-                title="Send to AI Tutor"
+                title="Send"
               >
                 <Send className="w-3.5 h-3.5" />
               </button>

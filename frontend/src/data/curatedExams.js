@@ -8,7 +8,6 @@ export const CURATED_EXAMS = [
     id: 'exam_gate_os_01',
     track: 'gate',
     trackLabel: 'GATE Computer Science & IT',
-    trackBadge: 'National Competitive Benchmark',
     quizTitle: 'GATE CS: Operating Systems & Virtual Memory Mastery',
     category: 'Systems & Architecture',
     difficulty: 'Hard',
@@ -143,7 +142,6 @@ export const CURATED_EXAMS = [
     id: 'exam_gate_algo_02',
     track: 'gate',
     trackLabel: 'GATE Computer Science & IT',
-    trackBadge: 'National Competitive Benchmark',
     quizTitle: 'GATE CS: Data Structures & Algorithms Rigor',
     category: 'Algorithms & Discrete Math',
     difficulty: 'Hard',
@@ -278,7 +276,6 @@ export const CURATED_EXAMS = [
     id: 'exam_tcs_nqt_03',
     track: 'tcs',
     trackLabel: 'TCS NQT & Tech Placement Qualifiers',
-    trackBadge: 'Industry Placement Benchmark',
     quizTitle: 'TCS NQT: Advanced Coding Logic, Pointers & Pseudocode',
     category: 'Placement & Industry Coding',
     difficulty: 'Medium',
@@ -413,7 +410,6 @@ export const CURATED_EXAMS = [
     id: 'exam_ai_ml_04',
     track: 'aiml',
     trackLabel: 'AI, Machine Learning & Data Science',
-    trackBadge: 'Specialized Engineering Track',
     quizTitle: 'AI & ML: Deep Learning, CNNs & Transformer Foundations',
     category: 'Artificial Intelligence',
     difficulty: 'Hard',
@@ -548,7 +544,6 @@ export const CURATED_EXAMS = [
     id: 'exam_fullstack_05',
     track: 'fullstack',
     trackLabel: 'Full-Stack Software Engineering',
-    trackBadge: 'Industry Web & Cloud Benchmark',
     quizTitle: 'Full-Stack: React Internals, Event Loop & System Architecture',
     category: 'Web & Systems Design',
     difficulty: 'Medium',
@@ -682,9 +677,9 @@ export const CURATED_EXAMS = [
 ];
 
 export const PREP_TRACK_FILTERS = [
-  { id: 'all', label: 'All Curated Exams', icon: 'layers' },
+  { id: 'all', label: 'All Exams', icon: 'layers' },
   { id: 'gate', label: 'GATE CS / IT', icon: 'book' },
-  { id: 'tcs', label: 'TCS NQT & Placements', icon: 'briefcase' },
-  { id: 'aiml', label: 'AI, ML & Data Science', icon: 'brain' },
-  { id: 'fullstack', label: 'Full-Stack Software Engineering', icon: 'code' }
+  { id: 'tcs', label: 'TCS NQT', icon: 'briefcase' },
+  { id: 'aiml', label: 'AI & Machine Learning', icon: 'brain' },
+  { id: 'fullstack', label: 'Full-Stack Engineering', icon: 'code' }
 ];

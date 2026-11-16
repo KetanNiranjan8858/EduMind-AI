@@ -16,7 +16,6 @@ import SourcePreviewModal from './components/SourcePreviewModal';
 import WorkspaceModal from './components/WorkspaceModal';
 import HistoryModal from './components/HistoryModal';
 import LoginModal from './components/LoginModal';
-import ExamPrepModal from './components/ExamPrepModal';
 import ExamPrepDashboard from './components/ExamPrepDashboard';
 import ExamView from './components/ExamView';
 import AnalyticsView from './components/AnalyticsView';
@@ -61,7 +60,6 @@ export default function App() {
   });
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [loginPromptMessage, setLoginPromptMessage] = useState('');
-  const [isExamPrepModalOpen, setIsExamPrepModalOpen] = useState(false);
 
   // Workspace State
   const [workspaces, setWorkspaces] = useState([]);
@@ -470,21 +468,6 @@ export default function App() {
     loadWorkspaceData('ws_default', null);
   }
 
-  async function handleSelectPrepTrack(track) {
-    // Check if track workspace exists or create one
-    const existing = workspaces.find(w => w.name.toLowerCase().includes(track.id));
-    if (existing) {
-      setActiveWorkspaceId(existing.id);
-    } else {
-      await handleCreateWorkspace({
-        name: track.title,
-        description: track.description,
-        color: track.id === 'gate' ? 'rose' : track.id === 'tcs' ? 'cyan' : 'emerald',
-        icon: 'book'
-      });
-    }
-  }
-
   const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId) || workspaces[0] || {
     id: 'ws_default',
     name: 'General Study Workspace',
@@ -705,13 +688,6 @@ export default function App() {
         }}
         onLogout={handleLogoutUser}
         loginPromptMessage={loginPromptMessage}
-      />
-
-      {/* Exam Prep Modal */}
-      <ExamPrepModal
-        isOpen={isExamPrepModalOpen}
-        onClose={() => setIsExamPrepModalOpen(false)}
-        onSelectTrack={handleSelectPrepTrack}
       />
     </div>
   );

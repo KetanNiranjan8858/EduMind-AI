@@ -249,11 +249,6 @@ export default function AIStudio({
                         <span className="text-slate-400 font-mono">
                           {quiz.questions?.length || quiz.totalQuestions || 0} Questions
                         </span>
-                        {quiz.isMock && (
-                          <span className="text-[9px] bg-amber-500/10 text-amber-400 px-1 rounded border border-amber-500/20">
-                            Demo
-                          </span>
-                        )}
                       </div>
                     </div>
 
