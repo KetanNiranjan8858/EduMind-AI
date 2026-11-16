@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "EduMind AI - Full-Stack AI Educational Platform & CBT Engine",
   "scripts": {
-    "backend": "npm run start --prefix backend",
+    "backend": "npm run dev --prefix backend",
     "frontend": "npm run dev --prefix frontend",
     "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
     "build:frontend": "npm run build --prefix frontend",
