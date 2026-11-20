@@ -1,4 +1,4 @@
-run -- ==========================================================
+-- ==========================================================
 -- EduMind AI — Complete Relational Database Schema
 -- Multi-User Account Protection & Per-User Content Isolation
 -- Compatible with MySQL 8.0+ / MariaDB

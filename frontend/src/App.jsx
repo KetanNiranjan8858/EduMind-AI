@@ -746,7 +746,7 @@ export default function App() {
     );
   }
 
-  const selectedSourcesList = sources.filter((s) => selectedIds.includes(s.id));
+  const selectedSourcesList = (sources || []).filter((s) => s && (selectedIds || []).includes(s.id));
 
   // Route 5: Central Studio (3-Panel Layout)
   return (

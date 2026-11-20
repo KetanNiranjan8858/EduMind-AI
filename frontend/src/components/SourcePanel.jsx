@@ -16,7 +16,8 @@ import {
   Pin,
   Edit2,
   X,
-  Shield
+  Shield,
+  Loader2
 } from 'lucide-react';
 import { formatBytes } from '../utils/helpers';
 import ContextMenu from './ContextMenu';
@@ -138,9 +139,9 @@ export default function SourcePanel({
     }
   }
 
-  const sortedWorkspaces = [...workspaces].sort((a, b) => {
-    const aPin = pinnedIds.includes(a.id);
-    const bPin = pinnedIds.includes(b.id);
+  const sortedWorkspaces = [...(workspaces || [])].sort((a, b) => {
+    const aPin = (pinnedIds || []).includes(a?.id);
+    const bPin = (pinnedIds || []).includes(b?.id);
     if (aPin && !bPin) return -1;
     if (!aPin && bPin) return 1;
     return 0;
