@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { AVAILABLE_EXAMS, GATE_SUBJECTS, GATE_EXAMS } from '../data/curatedExams';
-import { sendChatMessage } from '../utils/api';
+import { sendChatMessage, fetchExamPrepQuestions, fetchExamPrepSubjects } from '../utils/api';
 import {
   ExamPrepHeader,
   ExamPrepAnalyticsBar,
@@ -10,6 +10,7 @@ import {
   SubjectAnalyticsModal,
   GenerateExamModal
 } from './examprep';
+import ResizeHandle from './ResizeHandle';
 
 /**
  * ExamPrepDashboard — Main orchestrator for GATE CS/IT CBT preparation
@@ -24,6 +25,50 @@ export default function ExamPrepDashboard({
 }) {
   // Menu Option to select exam track (Currently GATE CS/IT)
   const [selectedExamId, setSelectedExamId] = useState('gate_cs');
+
+  // Database-backed Questions and Subjects State
+  const [dbQuestions, setDbQuestions] = useState([]);
+  const [dbSubjects, setDbSubjects] = useState(GATE_SUBJECTS);
+  const [loadingDb, setLoadingDb] = useState(true);
+
+  // Load Question Bank and Subjects directly from Database on mount
+  useEffect(() => {
+    let mounted = true;
+    async function loadDb() {
+      try {
+        const [qRes, sRes] = await Promise.all([
+          fetchExamPrepQuestions({ examId: 'gate_cs' }).catch(() => ({ questions: [] })),
+          fetchExamPrepSubjects().catch(() => ({ subjects: [] }))
+        ]);
+        if (!mounted) return;
+        if (qRes.questions && qRes.questions.length > 0) {
+          setDbQuestions(qRes.questions);
+        } else {
+          // Fallback from GATE_EXAMS
+          const fallbackQ = GATE_EXAMS.flatMap((e) =>
+            (e.questions || []).map((q) => ({
+              ...q,
+              subjectId: e.subjectId,
+              subjectName: e.subject,
+              topic: e.topics?.[0] || e.subject
+            }))
+          );
+          setDbQuestions(fallbackQ);
+        }
+        if (sRes.subjects && sRes.subjects.length > 0) {
+          setDbSubjects(sRes.subjects);
+        }
+      } catch (err) {
+        console.warn('[ExamPrep] Error loading database questions:', err);
+      } finally {
+        if (mounted) setLoadingDb(false);
+      }
+    }
+    loadDb();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // Left Sidebar: Checkbox selection of subjects (Default: ['all'])
   const [selectedSubjectIds, setSelectedSubjectIds] = useState(['all']);
@@ -47,10 +92,95 @@ export default function ExamPrepDashboard({
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages, isAiThinking]);
 
+  // Window width tracking for real-time questions view layout reflow
+  const [windowWidth, setWindowWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1280));
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const [isResizing, setIsResizing] = useState(false);
+
+  // Draggable sidebar widths with persistence
+  const [prepLeftWidth, setPrepLeftWidth] = useState(() => {
+    try {
+      const saved = localStorage.getItem('edumind_prep_left_width');
+      const parsed = parseInt(saved, 10);
+      return !isNaN(parsed) && parsed >= 200 && parsed <= 500 ? parsed : 288;
+    } catch {
+      return 288;
+    }
+  });
+
+  const [prepRightWidth, setPrepRightWidth] = useState(() => {
+    try {
+      const saved = localStorage.getItem('edumind_prep_right_width');
+      const parsed = parseInt(saved, 10);
+      return !isNaN(parsed) && parsed >= 260 && parsed <= 560 ? parsed : 384;
+    } catch {
+      return 384;
+    }
+  });
+
+  // Calculate dynamic main questions view width in real time
+  const prepMainWidth = Math.max(300, windowWidth - prepLeftWidth - prepRightWidth - 16);
+
+  const handlePrepLeftResize = useCallback((clientX) => {
+    const minWidth = 200;
+    const maxWidth = 500;
+    const clamped = Math.max(minWidth, Math.min(maxWidth, clientX));
+    setPrepLeftWidth(clamped);
+  }, []);
+
+  const handlePrepLeftDragEnd = useCallback((clientX) => {
+    setIsResizing(false);
+    const minWidth = 200;
+    const maxWidth = 500;
+    const clamped = Math.max(minWidth, Math.min(maxWidth, clientX));
+    try {
+      localStorage.setItem('edumind_prep_left_width', clamped.toString());
+    } catch {}
+  }, []);
+
+  const handlePrepLeftReset = useCallback(() => {
+    setPrepLeftWidth(288);
+    try {
+      localStorage.removeItem('edumind_prep_left_width');
+    } catch {}
+  }, []);
+
+  const handlePrepRightResize = useCallback((clientX) => {
+    const minWidth = 260;
+    const maxWidth = 560;
+    const newWidth = window.innerWidth - clientX;
+    const clamped = Math.max(minWidth, Math.min(maxWidth, newWidth));
+    setPrepRightWidth(clamped);
+  }, []);
+
+  const handlePrepRightDragEnd = useCallback((clientX) => {
+    setIsResizing(false);
+    const minWidth = 260;
+    const maxWidth = 560;
+    const newWidth = window.innerWidth - clientX;
+    const clamped = Math.max(minWidth, Math.min(maxWidth, newWidth));
+    try {
+      localStorage.setItem('edumind_prep_right_width', clamped.toString());
+    } catch {}
+  }, []);
+
+  const handlePrepRightReset = useCallback(() => {
+    setPrepRightWidth(384);
+    try {
+      localStorage.removeItem('edumind_prep_right_width');
+    } catch {}
+  }, []);
+
   // List of all individual official subject IDs (excluding 'all')
   const allSubjectIds = useMemo(() => {
-    return GATE_SUBJECTS.filter((s) => s.id !== 'all').map((s) => s.id);
-  }, []);
+    return dbSubjects.filter((s) => s.id !== 'all').map((s) => s.id);
+  }, [dbSubjects]);
 
   // Determine if all subjects are currently selected
   const isAllSelected = useMemo(() => {
@@ -95,21 +225,20 @@ export default function ExamPrepDashboard({
     }
   }
 
-  // Total questions in the GATE question bank across all subjects
+  // Total questions in the GATE question bank across all subjects from Database
   const totalQuestionsInBank = useMemo(() => {
-    return GATE_EXAMS.reduce(
-      (acc, e) => acc + (e.questions?.length || e.totalQuestions || 0),
-      0
-    );
-  }, []);
+    return dbQuestions.length > 0 ? dbQuestions.length : 100;
+  }, [dbQuestions]);
 
-  // Compute Analytics from Candidate's Exam History for GATE CS/IT
+  // Compute Analytics strictly from Candidate's Exam Prep History for GATE CS/IT
   const gateAttempts = useMemo(() => {
     return (examHistory || []).filter(
       (h) =>
-        !h.quiz?.track ||
+        h.category === 'examprep' ||
+        h.workspace_id === 'ws_gate_prep' ||
         h.quiz?.track === 'gate_cs' ||
-        h.quiz_title?.toLowerCase().includes('gate')
+        Boolean(h.quiz?.subjectId) ||
+        (h.quiz_title && h.quiz_title.toLowerCase().includes('gate'))
     );
   }, [examHistory]);
 
@@ -252,20 +381,24 @@ export default function ExamPrepDashboard({
     return [...attemptedList].sort((a, b) => a.accuracy - b.accuracy)[0];
   }, [subjectAnalytics]);
 
-  // Filtered Subject Papers based on Checked Subjects
-  const filteredExams = useMemo(() => {
-    if (isAllSelected) {
-      return GATE_EXAMS;
-    }
-    return GATE_EXAMS.filter((e) => selectedSubjectIds.includes(e.subjectId));
-  }, [isAllSelected, selectedSubjectIds]);
+  // Filtered Subject Groups with Questions loaded from Database
+  const subjectGroups = useMemo(() => {
+    const subjectsToUse = isAllSelected
+      ? dbSubjects.filter((s) => s.id !== 'all')
+      : dbSubjects.filter((s) => selectedSubjectIds.includes(s.id));
+
+    return subjectsToUse.map((sub) => {
+      const questions = dbQuestions.filter((q) => q.subjectId === sub.id);
+      return {
+        ...sub,
+        questions
+      };
+    }).filter((group) => group.questions.length > 0);
+  }, [dbQuestions, dbSubjects, isAllSelected, selectedSubjectIds]);
 
   const selectedTotalQuestions = useMemo(() => {
-    return filteredExams.reduce(
-      (sum, e) => sum + (e.questions?.length || e.totalQuestions || 0),
-      0
-    );
-  }, [filteredExams]);
+    return subjectGroups.reduce((sum, g) => sum + g.questions.length, 0);
+  }, [subjectGroups]);
 
   // Toggle answer / explanation reveal
   function toggleExplanation(qId) {
@@ -331,14 +464,14 @@ export default function ExamPrepDashboard({
     setChatMessages([]);
   }
 
-  // Pre-fill question into AI Assistant
+  // Pre-fill question into AI Assistant with strict precision instruction
   function handleAskAiQuestion(q, subjectName) {
-    const prompt = `Please provide a step-by-step conceptual explanation and solution derivation for this GATE CS question from **${subjectName}**:\n\n**Question:** ${q.question}\n\n**Options:**\nA) ${q.options.A}\nB) ${q.options.B}\nC) ${q.options.C}\nD) ${q.options.D}\n\n**Correct Answer:** Option ${q.correctAnswer}\n\nExplain the underlying concept, formulas, and how to arrive at this answer efficiently in the GATE exam.`;
+    const prompt = `Solve this GATE CS question from ${subjectName}:\n\nQuestion: ${q.question}\nOptions:\nA) ${q.options?.A || ''}\nB) ${q.options?.B || ''}\nC) ${q.options?.C || ''}\nD) ${q.options?.D || ''}\n\nCorrect Answer: Option ${q.correctAnswer}\n\nProvide only the precise step-by-step derivation and key formulas. Do not include greetings, pleasantries, or extraneous commentary.`;
     handleSendChatMessage(prompt);
   }
 
   return (
-    <div className="h-screen flex flex-col bg-dark-950 text-slate-100 overflow-hidden font-sans">
+    <div className="h-screen flex flex-col bg-[#F4EFE6] text-[#1C1917] overflow-hidden font-sans">
       {/* 1. Top Header */}
       <ExamPrepHeader
         currentUser={currentUser}
@@ -365,33 +498,40 @@ export default function ExamPrepDashboard({
         onOpenSubjectAnalytics={() => setShowSubjectAnalytics(true)}
       />
 
-      {/* 3. Main Split View */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar: Select Subject with Checkboxes (Clean: No enclosing boxes) */}
+      {/* 3. Main Split View with Floating Cards */}
+      <div className="flex-1 flex overflow-hidden px-3 pb-3 gap-2 bg-[#F4EFE6]">
+        {/* Left Sidebar: Select Subject with Checkboxes */}
         <ExamPrepSubjectSidebar
-          subjects={GATE_SUBJECTS}
+          subjects={dbSubjects}
           isAllSelected={isAllSelected}
           selectedSubjectIds={selectedSubjectIds}
           onToggleSubject={handleToggleSubject}
           onSelectAll={() => setSelectedSubjectIds(['all'])}
           onClearAll={() => setSelectedSubjectIds([])}
           allSubjectIds={allSubjectIds}
+          style={{ width: `${prepLeftWidth}px` }}
         />
 
-        {/* Center Main Content: Filtered Subject Question Papers & Questions */}
+        {/* Draggable Resize Handle between Left Sidebar and Questions View */}
+        <ResizeHandle
+          onResize={handlePrepLeftResize}
+          onReset={handlePrepLeftReset}
+          onDragStart={() => setIsResizing(true)}
+          onDragEnd={handlePrepLeftDragEnd}
+        />
+
+        {/* Center Main Content Box: Empty state with 'Yet to come' */}
         <ExamPrepQuestionsView
-          isAllSelected={isAllSelected}
-          filteredExams={filteredExams}
-          selectedTotalQuestions={selectedTotalQuestions}
-          totalQuestionsInBank={totalQuestionsInBank}
-          gateExams={GATE_EXAMS}
-          onSelectAllSubjects={() => setSelectedSubjectIds(['all'])}
-          onSelectOnlySubject={handleSelectOnlySubject}
-          onLaunchExam={onLaunchExam}
-          onOpenGenerateModal={() => setShowGenerateModal(true)}
-          revealedExplanations={revealedExplanations}
-          onToggleExplanation={toggleExplanation}
-          onAskAiQuestion={handleAskAiQuestion}
+          contentWidth={prepMainWidth}
+          isResizing={isResizing}
+        />
+
+        {/* Draggable Resize Handle between Questions View and AI Sidebar */}
+        <ResizeHandle
+          onResize={handlePrepRightResize}
+          onReset={handlePrepRightReset}
+          onDragStart={() => setIsResizing(true)}
+          onDragEnd={handlePrepRightDragEnd}
         />
 
         {/* Right AI Assistant Sidebar */}
@@ -404,6 +544,7 @@ export default function ExamPrepDashboard({
           onClearChat={handleClearChat}
           isAiThinking={isAiThinking}
           chatEndRef={chatEndRef}
+          style={{ width: `${prepRightWidth}px` }}
         />
       </div>
 
@@ -428,9 +569,10 @@ export default function ExamPrepDashboard({
       <GenerateExamModal
         isOpen={showGenerateModal}
         onClose={() => setShowGenerateModal(false)}
-        filteredExams={filteredExams}
-        allExams={GATE_EXAMS}
+        selectedSubjectIds={selectedSubjectIds}
         isAllSelected={isAllSelected}
+        questionsPool={dbQuestions.filter((q) => isAllSelected || selectedSubjectIds.includes(q.subjectId))}
+        subjects={dbSubjects}
         onLaunchExam={onLaunchExam}
       />
     </div>

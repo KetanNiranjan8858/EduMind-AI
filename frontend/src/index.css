@@ -3,33 +3,59 @@
 @tailwind utilities;
 
 @layer base {
-  body {
-    @apply bg-dark-950 text-slate-100 font-sans;
+  html, body {
+    background-color: #F4EFE6;
+    color: #1C1917;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    min-height: 100vh;
   }
 
-  /* Custom scrollbar */
+  /* Custom clean warm scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #0f172a;
+    background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #334155;
+    background: #DCD2C0;
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #475569;
+    background: #B8A995;
   }
 }
 
-/* Pulse glow for active elements */
-.glow-brand {
-  box-shadow: 0 0 25px -5px rgba(99, 102, 241, 0.35);
+/* Warm Cream + Forest Teal Design Tokens */
+.duo-gradient {
+  background: #173F3D !important;
 }
 
-.glow-gate {
-  box-shadow: 0 0 25px -5px rgba(225, 29, 72, 0.35);
+.duo-gradient-hover:hover {
+  background: #102B2A !important;
+}
+
+.duo-gradient-text {
+  color: #173F3D !important;
+  -webkit-background-clip: initial !important;
+  -webkit-text-fill-color: initial !important;
+}
+
+.duo-glow {
+  box-shadow: 0 4px 20px -4px rgba(23, 63, 61, 0.25);
+}
+
+/* Global cursor & selection lock during live sidebar dragging */
+body.resizing-active,
+body.resizing-active * {
+  user-select: none !important;
+  cursor: col-resize !important;
+  pointer-events: none !important;
+}
+
+body.resizing-active [role="separator"] {
+  pointer-events: auto !important;
 }

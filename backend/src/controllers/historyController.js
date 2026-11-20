@@ -3,7 +3,7 @@ import db from '../config/db.js';
 
 export async function getExamHistory(req, res) {
   try {
-    const { workspaceId = 'ws_default', userId, candidateId } = req.query;
+    const { workspaceId = 'ws_default', userId, candidateId, category } = req.query;
 
     let history = [];
     if (userId || candidateId) {
@@ -14,7 +14,7 @@ export async function getExamHistory(req, res) {
         [queryId, candidateId || queryId]
       );
     } else {
-      // When logged out, only return guest attempts (do not leak logged-in candidate attempts)
+      // When logged out, return attempts for the workspace (guest attempts)
       history = await db.query(
         'SELECT * FROM exam_attempts WHERE workspace_id = ? AND user_id IS NULL AND candidate_id IS NULL ORDER BY submitted_at DESC',
         [workspaceId]
@@ -22,12 +22,33 @@ export async function getExamHistory(req, res) {
     }
 
     // Parse JSON fields if they are strings
-    const parsed = history.map(item => ({
-      ...item,
-      quiz: typeof item.quiz_json === 'string' ? JSON.parse(item.quiz_json) : item.quiz_json,
-      userAnswers: typeof item.user_answers_json === 'string' ? JSON.parse(item.user_answers_json) : item.user_answers_json,
-      questionTimes: typeof item.question_times_json === 'string' ? JSON.parse(item.question_times_json) : item.question_times_json
-    }));
+    let parsed = history.map(item => {
+      const quizObj = typeof item.quiz_json === 'string' ? JSON.parse(item.quiz_json) : (item.quiz_json || {});
+      const userAnswersObj = typeof item.user_answers_json === 'string' ? JSON.parse(item.user_answers_json) : (item.user_answers_json || {});
+      const questionTimesObj = typeof item.question_times_json === 'string' ? JSON.parse(item.question_times_json) : (item.question_times_json || {});
+
+      const isExamPrep =
+        item.category === 'examprep' ||
+        item.workspace_id === 'ws_gate_prep' ||
+        quizObj?.track === 'gate_cs' ||
+        Boolean(quizObj?.subjectId) ||
+        (item.quiz_title && item.quiz_title.toLowerCase().includes('gate'));
+
+      return {
+        ...item,
+        category: isExamPrep ? 'examprep' : 'studio',
+        quiz: quizObj,
+        userAnswers: userAnswersObj,
+        questionTimes: questionTimesObj
+      };
+    });
+
+    // Enforce strict database separation between Studio and Exam Prep
+    if (category === 'studio') {
+      parsed = parsed.filter(item => item.category === 'studio' && item.workspace_id !== 'ws_gate_prep');
+    } else if (category === 'examprep') {
+      parsed = parsed.filter(item => item.category === 'examprep');
+    }
 
     return res.json({
       success: true,
@@ -51,7 +72,8 @@ export async function saveExamAttempt(req, res) {
       userAnswers = {},
       questionTimes = {},
       timeTakenSeconds = 0,
-      stats = {}
+      stats = {},
+      category = null
     } = req.body;
 
     if (!quiz) {
@@ -68,17 +90,28 @@ export async function saveExamAttempt(req, res) {
     const accuracyPercentage = stats.accuracyPercentage || 0;
     const overallPercentage = stats.overallPercentage || 0;
 
+    // Strict separation: Determine whether this attempt belongs to Exam Prep or Studio
+    const isExamPrep =
+      category === 'examprep' ||
+      workspaceId === 'ws_gate_prep' ||
+      quiz?.track === 'gate_cs' ||
+      Boolean(quiz?.subjectId) ||
+      quizTitle.toLowerCase().includes('gate');
+
+    const effectiveCategory = isExamPrep ? 'examprep' : 'studio';
+    const effectiveWorkspaceId = isExamPrep ? 'ws_gate_prep' : (workspaceId || 'ws_default');
+
     await db.query(
       `INSERT INTO exam_attempts (
         id, workspace_id, user_id, candidate_id, user_email, user_name,
         quiz_id, quiz_title, difficulty,
         total_questions, attempted_count, correct_count, incorrect_count,
         accuracy_percentage, overall_percentage, time_taken_seconds,
-        quiz_json, user_answers_json, question_times_json
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        quiz_json, user_answers_json, question_times_json, category
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
-        workspaceId,
+        effectiveWorkspaceId,
         userId,
         candidateId,
         userEmail,
@@ -95,16 +128,18 @@ export async function saveExamAttempt(req, res) {
         timeTakenSeconds,
         JSON.stringify(quiz),
         JSON.stringify(userAnswers),
-        JSON.stringify(questionTimes)
+        JSON.stringify(questionTimes),
+        effectiveCategory
       ]
     );
 
     return res.status(201).json({
       success: true,
-      message: 'Exam attempt saved to candidate history',
+      message: `Exam attempt saved to ${effectiveCategory === 'examprep' ? 'Exam Prep' : 'Studio'} history`,
       attemptId: id,
       candidateId,
-      userId
+      userId,
+      category: effectiveCategory
     });
   } catch (err) {
     console.error('[History API] Error saving exam attempt:', err);
@@ -118,11 +153,10 @@ export async function deleteExamAttempt(req, res) {
     await db.query('DELETE FROM exam_attempts WHERE id = ?', [id]);
     return res.json({
       success: true,
-      message: 'Exam attempt removed from history',
-      id
+      message: 'Exam attempt deleted successfully'
     });
   } catch (err) {
-    console.error('[History API] Error deleting attempt:', err);
-    return res.status(500).json({ success: false, message: 'Failed to delete attempt', error: err.message });
+    console.error('[History API] Error deleting exam attempt:', err);
+    return res.status(500).json({ success: false, message: 'Failed to delete exam attempt', error: err.message });
   }
 }

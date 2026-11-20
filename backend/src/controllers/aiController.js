@@ -139,6 +139,17 @@ export async function chatHandler(req, res) {
   }
 }
 
+function cleanAiHeadings(text) {
+  if (!text || typeof text !== 'string') return text;
+  return text
+    .replace(/^(#{1,6}\s*)\*\*(.+?)\*\*/gm, '$1$2')
+    .replace(/^(\s*)\*\*(.+?)\*\*(\s*:?)\s*$/gm, '$1$2$3')
+    .replace(/^(\s*[-*•]\s*)\*\*(.+?)\*\*(\s*:?)/gm, '$1$2$3')
+    .replace(/^(\s*\d+[\.\)]\s*)\*\*(.+?)\*\*(\s*:?)/gm, '$1$2$3')
+    .replace(/^(\s*)\*\*(.+?):?\*\*:\s*/gm, '$1$2: ')
+    .replace(/^(\s*)\*\*(.+?):\*\*\s*/gm, '$1$2: ');
+}
+
 /**
  * Get chat history for workspace
  */
@@ -164,7 +175,7 @@ export async function getChatHistoryHandler(req, res) {
       messages: history.map(h => ({
         id: h.id,
         sender: h.sender,
-        text: h.message,
+        text: h.sender === 'user' ? h.message : cleanAiHeadings(h.message),
         created_at: h.created_at
       }))
     });

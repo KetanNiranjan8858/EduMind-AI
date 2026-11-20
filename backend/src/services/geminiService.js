@@ -79,7 +79,7 @@ function generateMockQuiz(sources, difficulty, questionCount) {
     const title = titles[i % titles.length];
     questions.push({
       id: qIndex,
-      question: `[${difficulty}] Based on the source material "${sourceNames}": Regarding ${title}, which statement is strictly supported by the text?`,
+      question: `Regarding ${title}, which statement is strictly supported by the core concepts?`,
       options: [
         `A. The primary invariant maintains consistency under concurrent state updates without degraded latency.`,
         `B. The throughput exhibits quadratic degradation if buffer boundaries exceed memory thresholds.`,
@@ -87,7 +87,7 @@ function generateMockQuiz(sources, difficulty, questionCount) {
         `D. Auxiliary validation steps are bypassed only during cold-start initialization phases.`
       ],
       correctAnswer: ['A', 'B', 'C', 'D'][i % 4],
-      explanation: `According to the uploaded documents (${sourceNames}), this is the strictly verified conclusion aligned with ${difficulty} requirements.`
+      explanation: `This is the verified correct conclusion aligned with ${difficulty} requirements.`
     });
   }
 
@@ -179,6 +179,7 @@ STRICT CONSTRAINTS:
 3. Each question must have exactly 4 options labeled with "A.", "B.", "C.", and "D.".
 4. You must specify the "correctAnswer" as the single letter corresponding to the correct option ("A", "B", "C", or "D").
 5. Provide a detailed, step-by-step "explanation" citing the concepts from the source material.
+6. STRICT BAN ON FILE NAMES: NEVER include file names, document titles, or phrases like "Based on [filename]", "According to [filename]", or "In the document" inside the question statement. State ONLY the direct, pure academic question itself.
 
 You MUST return valid, pure JSON without markdown wrappers (or clean json) conforming exactly to this structure:
 {
@@ -235,6 +236,30 @@ You MUST return valid, pure JSON without markdown wrappers (or clean json) confo
     parsedQuiz.sourceFiles = sources.map(s => s.original_name);
     parsedQuiz.generatedAt = new Date().toISOString();
 
+    // Sanitize questions: strictly strip any file names or source prefixes
+    if (parsedQuiz.questions && Array.isArray(parsedQuiz.questions)) {
+      parsedQuiz.questions = parsedQuiz.questions.map((q) => {
+        let text = (q.question || '').trim();
+        text = text.replace(/^\[(Easy|Medium|Hard|Assessment)\]\s*/i, '');
+        text = text.replace(/^Based on (the )?(source material|uploaded documents?|documents?|notes?|text)[^:?\n]*[:,-]\s*/i, '');
+        text = text.replace(/^(According to|In the document|In the file|In)\s+["']?[^:?\n]+["']?[:,-]\s*/i, '');
+        for (const s of sources) {
+          if (s.original_name) {
+            const escaped = s.original_name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            text = text.replace(new RegExp(`^.*?${escaped}["']?\\s*[:,-]?\\s*`, 'i'), '');
+          }
+        }
+        text = text.replace(/^Regarding\s+["']?[^:?\n]+["']?,\s*which\s+/i, 'Which ');
+        if (text.length > 0) {
+          text = text.charAt(0).toUpperCase() + text.slice(1);
+        }
+        return {
+          ...q,
+          question: text || q.question
+        };
+      });
+    }
+
     return parsedQuiz;
   } catch (err) {
     console.error('[EduMind AI] Gemini generation error:', err);
@@ -251,13 +276,7 @@ export async function chatWithDocuments({ sources = [], messages = [], userQuery
 
   if (!ai) {
     return {
-      reply: `**EduMind AI Workspace**:
-I'm ready to assist you with your study notes! To enable live Gemini AI multi-modal analysis, please add your \`GEMINI_API_KEY\` to \`server/.env\`.
-
-Currently selected sources:
-${sources.map(s => `- **${s.original_name}** (${s.file_type})`).join('\n') || 'None'}
-
-How can I help you organize your study session or review your materials?`,
+      reply: `Gemini API key not configured. Please add GEMINI_API_KEY to backend/.env.`,
       isMock: true
     };
   }
@@ -293,9 +312,14 @@ How can I help you organize your study session or review your materials?`,
       }
     }
 
-    const systemPrompt = `You are EduMind AI, a world-class academic tutor and study assistant.
-The student has provided notes and study materials. Answer their questions clearly, thoroughly, and reference their uploaded materials directly.
-Use clear Markdown formatting with bullet points, code blocks, or mathematical formulas when relevant.`;
+    const systemPrompt = `You are EduMind AI, a precision-focused academic assistant and GATE tutor.
+CRITICAL MANDATORY INSTRUCTIONS:
+1. Generate ONLY precise, exact answers and the actual words, formulas, definitions, code, or derivations requested by the user.
+2. DO NOT generate extra conversational filler, greetings, pleasantries, apologies, or introductory remarks (e.g. NEVER say "Hello!", "Certainly!", "Sure! I would be glad to help", "Here is the explanation:", or similar).
+3. DO NOT generate closing remarks, sign-offs, or follow-up prompts (e.g. NEVER say "Hope this helps!", "Let me know if you have questions!").
+4. Get straight to the answer immediately. If the user asks for a formula, output ONLY the formula and exact definition. If the user asks for a step-by-step derivation or solution, output directly the steps and final result.
+5. Use clear, compact Markdown formatting with formulas or bullet points without verbose padding.
+6. For headings or section titles, NEVER wrap headings in asterisks (do NOT use **Heading** or ### **Heading**). Write pure plain text headings, e.g. "### Heading" or "Heading:". Never include double asterisks ** around headings or titles.`;
 
     contents.push({ text: `${systemPrompt}\n${textContext}` });
 
@@ -318,8 +342,17 @@ Use clear Markdown formatting with bullet points, code blocks, or mathematical f
       }
     });
 
+    let reply = response.text || 'No response generated from Gemini.';
+    reply = reply
+      .replace(/^(#{1,6}\s*)\*\*(.+?)\*\*/gm, '$1$2')
+      .replace(/^(\s*)\*\*(.+?)\*\*(\s*:?)\s*$/gm, '$1$2$3')
+      .replace(/^(\s*[-*•]\s*)\*\*(.+?)\*\*(\s*:?)/gm, '$1$2$3')
+      .replace(/^(\s*\d+[\.\)]\s*)\*\*(.+?)\*\*(\s*:?)/gm, '$1$2$3')
+      .replace(/^(\s*)\*\*(.+?):?\*\*:\s*/gm, '$1$2: ')
+      .replace(/^(\s*)\*\*(.+?):\*\*\s*/gm, '$1$2: ');
+
     return {
-      reply: response.text || 'No response generated from Gemini.'
+      reply
     };
   } catch (err) {
     console.error('[EduMind AI] Chat error:', err);

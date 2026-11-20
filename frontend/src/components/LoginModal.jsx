@@ -298,13 +298,13 @@ export default function LoginModal({
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-dark-850">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-brand-500/10 text-brand-400 rounded-xl border border-brand-500/20">
+            <div className="p-2 duo-gradient text-white rounded-xl shadow-sm shadow-indigo-500/20">
               {currentUser ? (
-                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                <ShieldCheck className="w-5 h-5 text-cyan-200" />
               ) : isForgotPassword ? (
-                <KeyRound className="w-5 h-5 text-amber-400" />
+                <KeyRound className="w-5 h-5 text-cyan-200" />
               ) : (
-                <User className="w-5 h-5" />
+                <User className="w-5 h-5 text-cyan-200" />
               )}
             </div>
             <div>
@@ -359,6 +359,14 @@ export default function LoginModal({
                 <span className="text-slate-400">Target Track:</span>
                 <span className="text-cyan-400 font-semibold">{currentUser.targetExam || 'GATE CS / IT'}</span>
               </div>
+              {currentUser.role === 'admin' && (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">System Role:</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold uppercase tracking-wider">
+                    Administrator
+                  </span>
+                </div>
+              )}
               <div className="flex items-center justify-between pt-1 border-t border-slate-800/60">
                 <span className="text-slate-400">Sign-In Method:</span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-medium">
@@ -383,7 +391,7 @@ export default function LoginModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-5 py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-500 rounded-xl transition-colors"
+                className="px-5 py-2 text-xs font-semibold text-white duo-gradient duo-gradient-hover rounded-xl transition-all shadow-sm cursor-pointer"
               >
                 Close
               </button>
@@ -617,9 +625,9 @@ export default function LoginModal({
               <button
                 type="button"
                 onClick={() => setAuthTab('signin')}
-                className={`py-2 text-center rounded-xl transition-all ${
+                className={`py-2 text-center rounded-xl transition-all cursor-pointer ${
                   authTab === 'signin'
-                    ? 'bg-slate-800 text-white shadow'
+                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -628,9 +636,9 @@ export default function LoginModal({
               <button
                 type="button"
                 onClick={() => setAuthTab('signup')}
-                className={`py-2 text-center rounded-xl transition-all ${
+                className={`py-2 text-center rounded-xl transition-all cursor-pointer ${
                   authTab === 'signup'
-                    ? 'bg-slate-800 text-white shadow'
+                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -735,7 +743,7 @@ export default function LoginModal({
                   <button
                     type="submit"
                     disabled={loading || !email.trim() || !password || Boolean(emailError)}
-                    className="w-full py-2.5 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-50 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-brand-500/20 transition-all cursor-pointer disabled:cursor-not-allowed"
+                    className="w-full py-2.5 duo-gradient duo-gradient-hover disabled:opacity-50 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-indigo-500/20 transition-all cursor-pointer disabled:cursor-not-allowed"
                   >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
                     <span>Sign In as Candidate</span>
@@ -916,7 +924,7 @@ export default function LoginModal({
                       password !== confirmPassword ||
                       Boolean(emailError)
                     }
-                    className="w-full py-2.5 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-50 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-brand-500/20 transition-all cursor-pointer disabled:cursor-not-allowed"
+                    className="w-full py-2.5 duo-gradient duo-gradient-hover disabled:opacity-50 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-indigo-500/20 transition-all cursor-pointer disabled:cursor-not-allowed"
                   >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                     <span>Create Account & Sign In</span>

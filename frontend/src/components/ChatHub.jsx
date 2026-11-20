@@ -15,6 +15,7 @@ import {
   X
 } from 'lucide-react';
 import { sendChatMessage, fetchChatHistory, clearChatHistory } from '../utils/api';
+import FormattedChatMessage from './FormattedChatMessage';
 
 export default function ChatHub({
   selectedSources = [],
@@ -22,8 +23,12 @@ export default function ChatHub({
   workspaceId = 'ws_default',
   workspaceName = 'Workspace',
   userId = null,
-  onUpdateWorkspaceName
+  onUpdateWorkspaceName,
+  contentWidth = 700,
+  isResizing = false
 }) {
+  const isCompact = contentWidth < 640;
+  const isSpacious = contentWidth >= 960;
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(workspaceName);
 
@@ -169,18 +174,22 @@ This central workspace allows you to converse with Google Gemini 2.5 Flash groun
   ];
 
   return (
-    <div className="h-full flex flex-col bg-dark-950">
+    <div className={`h-full flex flex-col bg-white overflow-hidden ${isResizing ? 'transition-none select-none' : ''}`}>
       {/* Top Header */}
-      <div className="px-6 py-3.5 border-b border-slate-800 bg-dark-900/60 backdrop-blur-md flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-brand-500/10 text-brand-400 rounded-xl border border-brand-500/20">
-            <Bot className="w-5 h-5" />
+      <div className={`border-b border-[#E6DFD3] bg-white flex items-center justify-between ${
+        isCompact ? 'px-3 py-2.5' : 'px-5 py-3'
+      }`}>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-[#FAF7F2] text-[#173F3D] border border-[#E6DFD3] flex items-center justify-center shrink-0">
+            <Bot className="w-4 h-4" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold text-slate-100">
-                Central Study Workspace
-              </h2>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              {!isCompact && (
+                <h2 className="text-sm font-bold text-[#1C1917] whitespace-nowrap">
+                  Central Study Workspace
+                </h2>
+              )}
               {isEditingName ? (
                 <div className="flex items-center gap-1">
                   <input
@@ -188,13 +197,13 @@ This central workspace allows you to converse with Google Gemini 2.5 Flash groun
                     value={editedName}
                     onChange={(e) => setEditedName(e.target.value)}
                     onKeyDown={handleNameKeyDown}
-                    className="px-2 py-0.5 text-xs bg-dark-950 text-white rounded-md border border-brand-500 focus:outline-none"
+                    className="px-2 py-0.5 text-xs bg-[#FAF7F2] text-[#1C1917] rounded-md border border-[#173F3D] focus:outline-none"
                     autoFocus
                   />
                   <button
                     type="button"
                     onClick={handleSaveWorkspaceName}
-                    className="p-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs"
+                    className="p-1 bg-[#173F3D] hover:bg-[#102B2A] text-white rounded text-xs"
                     title="Save name"
                   >
                     <Check className="w-3 h-3" />
@@ -205,7 +214,7 @@ This central workspace allows you to converse with Google Gemini 2.5 Flash groun
                       setIsEditingName(false);
                       setEditedName(workspaceName);
                     }}
-                    className="p-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs"
+                    className="p-1 bg-white hover:bg-[#FAF7F2] text-[#78716C] rounded text-xs"
                     title="Cancel"
                   >
                     <X className="w-3 h-3" />
@@ -215,71 +224,97 @@ This central workspace allows you to converse with Google Gemini 2.5 Flash groun
                 <button
                   type="button"
                   onClick={() => setIsEditingName(true)}
-                  className="group px-2 py-0.5 text-[11px] font-semibold bg-dark-950 hover:bg-slate-800 text-brand-300 rounded-md border border-brand-500/20 flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="group px-2.5 py-0.5 text-[11px] font-semibold bg-[#E8DFCF] hover:bg-[#DCD2C0] text-[#173F3D] rounded-md border border-[#DCD2C0] flex items-center gap-1.5 transition-colors cursor-pointer max-w-[160px] sm:max-w-xs truncate"
                   title="Click to edit workspace name"
                 >
-                  <span>{workspaceName}</span>
-                  <Edit2 className="w-2.5 h-2.5 text-slate-500 group-hover:text-brand-300 transition-colors" />
+                  <span className="truncate">{workspaceName}</span>
+                  <Edit2 className="w-2.5 h-2.5 text-[#173F3D]/70 group-hover:text-[#173F3D] transition-colors shrink-0" />
                 </button>
               )}
             </div>
           </div>
         </div>
 
-        <button
-          onClick={handleClearHistory}
-          className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors text-xs flex items-center gap-1"
-          title="Clear Chat History"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Live Drag & Layout HUD Indicator */}
+          {isResizing ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#173F3D]/10 border border-[#173F3D]/30 text-[10px] font-mono text-[#173F3D] shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#173F3D] animate-pulse" />
+              <span>{Math.round(contentWidth)}px • {isCompact ? 'Compact' : isSpacious ? 'Spacious' : 'Standard'}</span>
+            </div>
+          ) : selectedSources.length > 0 ? (
+            <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[#FAF7F2] text-[#173F3D] border border-[#E6DFD3]">
+              {selectedSources.length} source{selectedSources.length > 1 ? 's' : ''} grounded
+            </span>
+          ) : null}
+
+          <button
+            onClick={handleClearHistory}
+            className="p-1.5 text-[#78716C] hover:text-rose-500 hover:bg-[#FAF7F2] rounded-lg transition-colors text-xs flex items-center gap-1 cursor-pointer"
+            title="Clear Chat History"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
-      {/* Messages Feed */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-5">
+      {/* Messages Feed — Clean White Reading Area */}
+      <div className={`flex-1 overflow-y-auto bg-white ${
+        isCompact ? 'p-3.5 space-y-3.5' : isSpacious ? 'p-8 space-y-6' : 'p-6 space-y-5'
+      }`}>
         {loadingHistory ? (
-          <div className="flex items-center justify-center h-48 text-slate-500 text-xs gap-2">
-            <Loader2 className="w-4 h-4 animate-spin text-brand-400" />
+          <div className="flex items-center justify-center h-48 text-[#78716C] text-xs gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-[#173F3D]" />
             <span>Loading workspace chat...</span>
           </div>
         ) : (
           messages.map((msg) => (
             <div
               key={msg.id}
-              className={`flex gap-3.5 max-w-3xl ${
-                msg.sender === 'user' ? 'ml-auto flex-row-reverse' : ''
-              }`}
+              className={`flex gap-3 w-full mx-auto transition-all ${
+                isCompact ? 'max-w-full' : isSpacious ? 'max-w-5xl' : 'max-w-3xl'
+              } ${msg.sender === 'user' ? 'ml-auto flex-row-reverse' : ''}`}
             >
               <div
-                className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs font-semibold ${
+                className={`rounded-lg flex items-center justify-center shrink-0 font-semibold mt-0.5 ${
+                  isCompact ? 'w-6 h-6 text-[10px]' : 'w-7 h-7 text-xs'
+                } ${
                   msg.sender === 'user'
-                    ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20'
-                    : 'bg-dark-850 text-brand-400 border border-slate-700/80'
+                    ? 'bg-[#173F3D] text-white'
+                    : 'bg-[#FAF7F2] text-[#173F3D] border border-[#E6DFD3]'
                 }`}
               >
-                {msg.sender === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                {msg.sender === 'user' ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
               </div>
 
               <div
-                className={`p-4 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm ${
+                className={`text-xs sm:text-sm leading-relaxed ${
                   msg.sender === 'user'
-                    ? 'bg-brand-600 text-white rounded-tr-none'
-                    : 'bg-dark-900 border border-slate-800/90 text-slate-200 rounded-tl-none prose-invert font-sans'
+                    ? `bg-[#173F3D] text-white px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl shadow-sm ${
+                        isCompact ? 'max-w-[85%]' : isSpacious ? 'max-w-2xl' : 'max-w-xl'
+                      }`
+                    : 'text-[#1C1917] flex-1 pt-0.5 min-w-0'
                 }`}
               >
-                <div className="whitespace-pre-wrap">{msg.text}</div>
+                {msg.sender === 'user' ? (
+                  <div className="whitespace-pre-wrap">{msg.text}</div>
+                ) : (
+                  <FormattedChatMessage content={msg.text} />
+                )}
               </div>
             </div>
           ))
         )}
 
         {loading && (
-          <div className="flex gap-3.5 max-w-3xl">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-dark-850 text-brand-400 border border-slate-700">
-              <Bot className="w-4 h-4 animate-spin" />
+          <div className={`flex gap-3.5 w-full mx-auto ${
+            isCompact ? 'max-w-full' : isSpacious ? 'max-w-5xl' : 'max-w-3xl'
+          }`}>
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-[#FAF7F2] text-[#173F3D] border border-[#E6DFD3] mt-0.5">
+              <Bot className="w-3.5 h-3.5 animate-spin" />
             </div>
-            <div className="p-4 bg-dark-900 border border-slate-800 rounded-2xl rounded-tl-none text-xs text-slate-400 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-brand-400 animate-pulse" />
+            <div className="py-1 text-xs text-[#78716C] flex items-center gap-2">
+              <Sparkles className="w-3.5 h-3.5 text-[#173F3D] animate-pulse" />
               <span>Analyzing selected materials and generating response...</span>
             </div>
           </div>
@@ -288,40 +323,43 @@ This central workspace allows you to converse with Google Gemini 2.5 Flash groun
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Quick Prompts */}
-      <div className="px-6 py-2 border-t border-slate-800/60 bg-dark-900/40 flex items-center gap-2 overflow-x-auto scrollbar-none">
-        <span className="text-[11px] text-slate-500 shrink-0 font-medium">Quick Prompts:</span>
+      {/* Quick Prompts matching screenshot */}
+      <div className="px-5 py-2.5 border-t border-[#E6DFD3] bg-[#FAF7F2]/40 flex items-center gap-2 overflow-x-auto scrollbar-none">
+        <span className="text-[11px] text-[#78716C] shrink-0 font-semibold">Quick Prompts:</span>
         {promptSuggestions.map((prompt, i) => (
           <button
             key={i}
             onClick={() => handleSend(prompt)}
-            className="text-[11px] text-slate-400 hover:text-white bg-dark-850 hover:bg-slate-800 px-3 py-1 rounded-full border border-slate-800 shrink-0 transition-colors"
+            className="text-[#1C1917] hover:text-[#173F3D] bg-[#E8DFCF] hover:bg-[#DCD2C0] border border-[#DCD2C0] rounded-full shrink-0 transition-colors cursor-pointer text-[11px] px-3.5 py-1 font-medium shadow-2xs"
           >
             {prompt}
           </button>
         ))}
       </div>
 
-      {/* Input Area */}
-      <div className="p-4 border-t border-slate-800 bg-dark-900">
-        <div className="relative flex items-center">
+      {/* Input Area (Clean Floating Bar on White) */}
+      <div className={`bg-white border-t border-[#E6DFD3] ${isCompact ? 'p-2.5' : 'p-3.5'}`}>
+        <div className={`relative flex items-center mx-auto w-full transition-all bg-[#FAF7F2] border border-[#E6DFD3] rounded-2xl shadow-xs ${
+          isCompact ? 'max-w-full' : isSpacious ? 'max-w-5xl' : 'max-w-4xl'
+        }`}>
           <textarea
             value={inputQuery}
             onChange={(e) => setInputQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
               selectedSources.length > 0
-                ? `Ask anything about ${selectedSources.length} selected source(s) in ${workspaceName}... (Shift + Enter for newline)`
+                ? `Ask anything about ${selectedSources.length} source(s) in ${workspaceName}...`
                 : `Ask a question or select files from the left panel...`
             }
-            rows={2}
-            className="w-full pl-4 pr-12 py-3 bg-dark-950 border border-slate-800 rounded-xl text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-brand-500 text-xs sm:text-sm font-sans transition-colors resize-none"
+            rows={1}
+            className="w-full pl-4 pr-12 py-3 bg-transparent text-[#1C1917] placeholder-[#78716C] focus:outline-none text-xs sm:text-sm font-sans resize-none"
           />
           <button
             type="button"
             onClick={() => handleSend()}
             disabled={loading || !inputQuery.trim()}
-            className="absolute right-3 p-2 bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-white rounded-lg transition-colors shadow-md shadow-brand-500/20"
+            className="absolute right-2.5 p-2 bg-[#173F3D] hover:bg-[#102B2A] text-white disabled:opacity-40 rounded-xl transition-all cursor-pointer shadow-2xs"
+            title="Send query"
           >
             <Send className="w-4 h-4" />
           </button>

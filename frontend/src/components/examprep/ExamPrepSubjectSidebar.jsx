@@ -8,7 +8,9 @@ export default function ExamPrepSubjectSidebar({
   onToggleSubject,
   onSelectAll,
   onClearAll,
-  allSubjectIds = []
+  allSubjectIds = [],
+  style,
+  className = ''
 }) {
   function isSubjectChecked(subjectId) {
     if (subjectId === 'all') return isAllSelected;
@@ -17,42 +19,47 @@ export default function ExamPrepSubjectSidebar({
   }
 
   return (
-    <aside className="w-72 shrink-0 border-r border-slate-800 bg-dark-900/60 flex flex-col overflow-hidden">
+    <aside
+      style={style}
+      className={`shrink-0 rounded-2xl border border-[#E6DFD3] bg-white shadow-[0_2px_12px_rgba(40,30,20,0.04)] flex flex-col overflow-hidden ${
+        style?.width ? '' : 'w-72'
+      } ${className}`}
+    >
       {/* Sidebar Header with Selection Counter */}
-      <div className="p-3.5 border-b border-slate-800 flex items-center justify-between bg-dark-850/70">
+      <div className="p-3.5 border-b border-[#E6DFD3] flex items-center justify-between bg-[#FAF7F2]">
         <div className="flex items-center gap-2">
-          <Filter className="w-3.5 h-3.5 text-rose-400" />
-          <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+          <Filter className="w-3.5 h-3.5 text-[#173F3D]" />
+          <span className="text-xs font-bold text-[#1C1917] uppercase tracking-wider">
             Select Subject
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700/60">
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#E8DFCF] text-[#173F3D] border border-[#DCD2C0] font-bold">
             {isAllSelected ? 'All' : selectedSubjectIds.length}/{allSubjectIds.length} Selected
           </span>
         </div>
       </div>
 
       {/* Quick Select All / Clear All Row */}
-      <div className="px-3 py-2 border-b border-slate-800/60 bg-dark-950/40 flex items-center justify-between text-[11px]">
+      <div className="px-3 py-2 border-b border-[#E6DFD3] bg-white flex items-center justify-between text-[11px]">
         <button
           type="button"
           onClick={onSelectAll}
-          className="text-rose-400 hover:text-rose-300 font-semibold cursor-pointer transition-colors"
+          className="text-[#173F3D] hover:underline font-semibold cursor-pointer transition-colors"
         >
           Select All
         </button>
-        <span className="text-slate-600">•</span>
+        <span className="text-[#DCD2C0]">•</span>
         <button
           type="button"
           onClick={onClearAll}
-          className="text-slate-400 hover:text-slate-200 font-semibold cursor-pointer transition-colors"
+          className="text-[#78716C] hover:text-[#1C1917] font-semibold cursor-pointer transition-colors"
         >
           Clear All
         </button>
       </div>
 
-      {/* Clean Subject Checkbox List — Only Subject Name and Checkbox (No enclosing box per subject) */}
+      {/* Clean Subject Checkbox List */}
       <div className="flex-1 overflow-y-auto py-3 px-3.5 space-y-2">
         {subjects.map((subject) => {
           const isChecked = isSubjectChecked(subject.id);
@@ -66,13 +73,13 @@ export default function ExamPrepSubjectSidebar({
                 type="checkbox"
                 checked={isChecked}
                 onChange={() => onToggleSubject(subject.id)}
-                className="w-4 h-4 rounded border-slate-700 bg-dark-950 text-rose-600 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-rose-600 shrink-0"
+                className="w-4 h-4 rounded border-[#DCD2C0] text-[#173F3D] focus:ring-0 focus:ring-offset-0 cursor-pointer accent-[#173F3D] shrink-0"
               />
               <span
                 className={`text-xs transition-colors truncate ${
                   isChecked
-                    ? 'text-rose-300 font-semibold'
-                    : 'text-slate-300 group-hover:text-white font-medium'
+                    ? 'text-[#173F3D] font-bold'
+                    : 'text-[#1C1917] group-hover:text-[#173F3D] font-medium'
                 }`}
               >
                 {subject.name}

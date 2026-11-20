@@ -1,28 +1,33 @@
 import React, { useState } from 'react';
-import { Sparkles, X, Play, Clock, BookOpen, CheckCircle2, ShieldCheck, Layers } from 'lucide-react';
+import { Sparkles, X, Play, Clock, BookOpen, CheckCircle2, ShieldCheck, Layers, Loader2 } from 'lucide-react';
+import { generateExamPrepTest } from '../../utils/api';
 
 export default function GenerateExamModal({
   isOpen,
   onClose,
+  selectedSubjectIds = ['all'],
+  isAllSelected = true,
+  questionsPool = [],
+  subjects = [],
   filteredExams = [],
   allExams = [],
-  isAllSelected = true,
   onLaunchExam
 }) {
   if (!isOpen) return null;
 
-  // The pool of exams from which questions are sampled
-  const poolExams = filteredExams.length > 0 ? filteredExams : allExams;
+  const [generating, setGenerating] = useState(false);
 
   // Extract all questions in pool
-  const allAvailableQuestions = poolExams.flatMap((e) =>
-    (e.questions || []).map((q) => ({
-      ...q,
-      subjectName: e.subject
-    }))
-  );
+  const allAvailableQuestions = questionsPool.length > 0
+    ? questionsPool
+    : (filteredExams.length > 0 ? filteredExams : allExams).flatMap((e) =>
+      (e.questions || []).map((q) => ({
+        ...q,
+        subjectName: e.subject
+      }))
+    );
 
-  const maxQuestions = allAvailableQuestions.length;
+  const maxQuestions = Math.max(1, allAvailableQuestions.length);
 
   // Preset Configurations
   const presets = [
@@ -37,17 +42,37 @@ export default function GenerateExamModal({
     presets.findIndex((p) => p.count === 20) >= 0 ? presets.findIndex((p) => p.count === 20) : 0
   );
 
-  const activePreset = presets[selectedPresetIndex] || presets[0] || { count: 10, time: 30 };
+  const activePreset = presets[selectedPresetIndex] || presets[0] || { count: 10, time: 25 };
 
-  function handleGenerateAndAttempt() {
-    // Shuffle and pick questions across subjects with balanced distribution
+  async function handleGenerateAndAttempt() {
+    setGenerating(true);
+    try {
+      const res = await generateExamPrepTest({
+        subjectIds: isAllSelected ? ['all'] : selectedSubjectIds,
+        questionCount: activePreset.count,
+        timeLimitMinutes: activePreset.time,
+        difficulty: 'Hard'
+      });
+      if (res.quiz) {
+        setGenerating(false);
+        onClose();
+        onLaunchExam(res.quiz);
+        return;
+      }
+    } catch (err) {
+      console.warn('[GenerateExamModal] API generation failed, falling back to local pool:', err.message);
+    } finally {
+      setGenerating(false);
+    }
+
+    // Fallback using loaded questionsPool
     const shuffledPool = [...allAvailableQuestions].sort(() => 0.5 - Math.random());
     const pickedQuestions = shuffledPool.slice(0, activePreset.count).map((q, idx) => ({
       ...q,
       id: idx + 1
     }));
 
-    const subjectNames = Array.from(new Set(poolExams.map((e) => e.subject)));
+    const subjectNames = Array.from(new Set(pickedQuestions.map((q) => q.subjectName || q.subject_name))).filter(Boolean);
     const title =
       isAllSelected || subjectNames.length > 3
         ? `GATE CS/IT: Generated Mock Assessment (${activePreset.count} Qs)`
@@ -55,13 +80,14 @@ export default function GenerateExamModal({
 
     const generatedQuiz = {
       id: `generated_gate_${Date.now()}`,
+      track: 'gate_cs',
       subject: isAllSelected ? 'GATE CS/IT Full Syllabus' : subjectNames.join(', '),
       quizTitle: title,
       difficulty: 'Hard',
       totalQuestions: pickedQuestions.length,
       timeLimitMinutes: activePreset.time,
-      description: `Official benchmark assessment generated from ${subjectNames.length} GATE CS/IT subjects. Timed under official CBT conditions.`,
-      topics: Array.from(new Set(poolExams.flatMap((e) => e.topics || []))).slice(0, 8),
+      description: `Official benchmark assessment generated from database across ${subjectNames.length} GATE CS/IT subjects. Timed under official CBT conditions.`,
+      topics: Array.from(new Set(pickedQuestions.map((q) => q.topic))).filter(Boolean).slice(0, 8),
       questions: pickedQuestions,
       generatedAt: Date.now()
     };
@@ -184,11 +210,21 @@ export default function GenerateExamModal({
           {/* Primary CTA: Attempt Exam */}
           <button
             type="button"
+            disabled={generating}
             onClick={handleGenerateAndAttempt}
-            className="px-6 py-2.5 bg-gradient-to-r from-rose-600 via-purple-600 to-brand-600 hover:from-rose-500 hover:via-purple-500 hover:to-brand-500 text-white rounded-xl text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-rose-600/30 hover:scale-[1.02] transition-all cursor-pointer"
+            className="px-6 py-2.5 bg-gradient-to-r from-rose-600 via-purple-600 to-brand-600 hover:from-rose-500 hover:via-purple-500 hover:to-brand-500 disabled:opacity-50 text-white rounded-xl text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-rose-600/30 hover:scale-[1.02] transition-all cursor-pointer"
           >
-            <Play className="w-4 h-4 fill-current" />
-            <span>Attempt Generated Exam ({activePreset.count} Qs)</span>
+            {generating ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
+                <span>Generating Exam...</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4 fill-current" />
+                <span>Attempt Generated Exam ({activePreset.count} Qs)</span>
+              </>
+            )}
           </button>
         </div>
       </div>

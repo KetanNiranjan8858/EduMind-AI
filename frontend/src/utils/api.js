@@ -170,10 +170,11 @@ export async function fetchExamHistory(options = 'ws_default') {
   if (typeof options === 'string') {
     url += `?workspaceId=${encodeURIComponent(options)}`;
   } else {
-    const { workspaceId = 'ws_default', userId, candidateId } = options || {};
+    const { workspaceId = 'ws_default', userId, candidateId, category } = options || {};
     url += `?workspaceId=${encodeURIComponent(workspaceId)}`;
     if (userId) url += `&userId=${encodeURIComponent(userId)}`;
     if (candidateId) url += `&candidateId=${encodeURIComponent(candidateId)}`;
+    if (category) url += `&category=${encodeURIComponent(category)}`;
   }
 
   const res = await fetch(url);
@@ -191,7 +192,8 @@ export async function saveExamAttempt({
   userAnswers,
   questionTimes,
   timeTakenSeconds,
-  stats
+  stats,
+  category = null
 }) {
   const res = await fetch(`${API_BASE}/history`, {
     method: 'POST',
@@ -206,7 +208,8 @@ export async function saveExamAttempt({
       userAnswers,
       questionTimes,
       timeTakenSeconds,
-      stats
+      stats,
+      category
     })
   });
 
@@ -296,4 +299,153 @@ export async function authResetPassword({ email, otp, newPassword }) {
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.message || 'Password reset failed');
   return json;
+}
+
+// ================= EXAM PREP DATABASE =================
+export async function fetchExamPrepQuestions(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.subjectId) qs.append('subjectId', params.subjectId);
+  if (params.examId) qs.append('examId', params.examId);
+  if (params.difficulty) qs.append('difficulty', params.difficulty);
+  if (params.limit) qs.append('limit', params.limit);
+  const qStr = qs.toString();
+  const url = qStr ? `${API_BASE}/examprep/questions?${qStr}` : `${API_BASE}/examprep/questions`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to fetch exam prep questions');
+  return await res.json();
+}
+
+export async function fetchExamPrepSubjects() {
+  const res = await fetch(`${API_BASE}/examprep/subjects`);
+  if (!res.ok) throw new Error('Failed to fetch exam prep subjects');
+  return await res.json();
+}
+
+export async function generateExamPrepTest(data) {
+  const res = await fetch(`${API_BASE}/examprep/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.message || 'Failed to generate CBT exam');
+  return json;
+}
+
+export async function fetchExamPrepTests(examId = 'gate_cs') {
+  const res = await fetch(`${API_BASE}/examprep/tests?examId=${encodeURIComponent(examId)}`);
+  if (!res.ok) throw new Error('Failed to fetch exam prep tests');
+  return await res.json();
+}
+
+// ================= ADMIN COMMAND CENTER =================
+export async function fetchAdminStudents() {
+  const res = await fetch(`${API_BASE}/admin/students`);
+  if (!res.ok) throw new Error('Failed to fetch students data');
+  return await res.json();
+}
+
+export async function fetchStudentPerformance(userId) {
+  const res = await fetch(`${API_BASE}/admin/students/${encodeURIComponent(userId)}/performance`);
+  if (!res.ok) throw new Error('Failed to fetch student performance');
+  return await res.json();
+}
+
+export async function updateAdminStudent(userId, data) {
+  const res = await fetch(`${API_BASE}/admin/students/${encodeURIComponent(userId)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.message || 'Failed to update student');
+  return json;
+}
+
+export async function deleteAdminStudent(userId) {
+  const res = await fetch(`${API_BASE}/admin/students/${encodeURIComponent(userId)}`, {
+    method: 'DELETE'
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.message || 'Failed to delete student');
+  return json;
+}
+
+export async function fetchAdminQuestions(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.examId) qs.append('examId', params.examId);
+  if (params.subjectId) qs.append('subjectId', params.subjectId);
+  if (params.topic) qs.append('topic', params.topic);
+  if (params.difficulty) qs.append('difficulty', params.difficulty);
+  if (params.search) qs.append('search', params.search);
+  if (params.page) qs.append('page', params.page);
+  if (params.limit) qs.append('limit', params.limit);
+  const qStr = qs.toString();
+  const url = qStr ? `${API_BASE}/admin/questions?${qStr}` : `${API_BASE}/admin/questions`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to fetch admin questions');
+  return await res.json();
+}
+
+export async function createAdminQuestion(data) {
+  const res = await fetch(`${API_BASE}/admin/questions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.message || 'Failed to create question');
+  return json;
+}
+
+export async function bulkCreateAdminQuestions(questions, examId = 'gate_cs') {
+  const res = await fetch(`${API_BASE}/admin/questions/bulk`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ questions, examId })
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.message || 'Failed to bulk create questions');
+  return json;
+}
+
+export async function updateAdminQuestion(id, data) {
+  const res = await fetch(`${API_BASE}/admin/questions/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.message || 'Failed to update question');
+  return json;
+}
+
+export async function deleteAdminQuestion(id) {
+  const res = await fetch(`${API_BASE}/admin/questions/${encodeURIComponent(id)}`, {
+    method: 'DELETE'
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.message || 'Failed to delete question');
+  return json;
+}
+
+export async function verifyAdminPasscode(data) {
+  const res = await fetch(`${API_BASE}/admin/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(typeof data === 'string' ? { passcode: data } : data)
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.message || 'Admin verification failed');
+  return json;
+}
+
+export async function fetchAdminTopics(subjectId = null, examId = 'gate_cs') {
+  const qs = new URLSearchParams();
+  if (examId) qs.append('examId', examId);
+  if (subjectId) qs.append('subjectId', subjectId);
+  const url = `${API_BASE}/admin/topics?${qs.toString()}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to fetch topics');
+  return await res.json();
 }

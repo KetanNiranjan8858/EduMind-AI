@@ -36,8 +36,8 @@ export default function NoteModal({ isOpen, onClose, onNoteCreated }) {
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-dark-850">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-brand-500/10 text-brand-400 rounded-lg border border-brand-500/20">
-              <FileText className="w-5 h-5" />
+            <div className="p-2 duo-gradient text-white rounded-lg shadow-sm shadow-indigo-500/20">
+              <FileText className="w-5 h-5 text-cyan-200" />
             </div>
             <div>
               <h3 className="font-semibold text-slate-100 text-base">Create Study Note</h3>
@@ -106,7 +106,7 @@ export default function NoteModal({ isOpen, onClose, onNoteCreated }) {
             <button
               type="submit"
               disabled={loading || !title.trim()}
-              className="px-5 py-2.5 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-50 text-white text-xs font-medium rounded-xl flex items-center gap-2 shadow-lg shadow-brand-500/20 transition-all"
+              className="px-5 py-2.5 duo-gradient duo-gradient-hover disabled:opacity-50 text-white text-xs font-medium rounded-xl flex items-center gap-2 shadow-lg shadow-indigo-500/20 transition-all cursor-pointer"
             >
               {loading ? (
                 <>
@@ -115,7 +115,7 @@ export default function NoteModal({ isOpen, onClose, onNoteCreated }) {
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4" />
+                  <Sparkles className="w-4 h-4 text-cyan-200" />
                   <span>Save to Sources</span>
                 </>
               )}

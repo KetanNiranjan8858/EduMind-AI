@@ -15,7 +15,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { calculateScore, formatTime } from '../utils/helpers';
+import { calculateScore, formatTime, cleanQuestionStatement } from '../utils/helpers';
 
 export default function AnalyticsView({
   quiz,
@@ -57,13 +57,13 @@ export default function AnalyticsView({
       {/* Top Navigation */}
       <header className="h-16 bg-dark-900 border-b border-slate-800 px-6 flex items-center justify-between shrink-0 shadow-md">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-tr from-brand-600 to-indigo-600 rounded-xl text-white">
-            <Trophy className="w-5 h-5" />
+          <div className="p-2 duo-gradient rounded-xl text-white shadow-sm shadow-indigo-500/20">
+            <Trophy className="w-5 h-5 text-cyan-200" />
           </div>
           <div>
             <h1 className="text-sm font-bold text-slate-100 flex items-center gap-2">
               <span>Performance Analytics & Assessment Review</span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-cyan-300 border border-cyan-500/30">
                 {quiz.difficulty || 'Medium'}
               </span>
             </h1>
@@ -76,14 +76,14 @@ export default function AnalyticsView({
         <div className="flex items-center gap-3">
           <button
             onClick={onRetakeExam}
-            className="px-3.5 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-dark-850 hover:bg-slate-800 border border-slate-700/60 rounded-xl flex items-center gap-1.5 transition-colors"
+            className="px-3.5 py-2 text-xs font-semibold text-slate-300 hover:text-cyan-300 bg-dark-850 hover:bg-slate-800 border border-slate-700/60 hover:border-cyan-500/30 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Retake Exam</span>
           </button>
           <button
             onClick={onReturnToStudio}
-            className="px-4 py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-500 rounded-xl flex items-center gap-1.5 shadow-md shadow-brand-500/20 transition-all"
+            className="px-4 py-2 text-xs font-semibold text-white duo-gradient duo-gradient-hover rounded-xl flex items-center gap-1.5 shadow-md shadow-indigo-500/20 transition-all cursor-pointer"
           >
             <Home className="w-3.5 h-3.5" />
             <span>Return to Studio</span>
@@ -91,146 +91,126 @@ export default function AnalyticsView({
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <div className="flex-1 max-w-6xl w-full mx-auto p-6 space-y-6">
-        {/* Performance Summary Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card 1: Total Score */}
-          <div className="p-5 rounded-2xl bg-dark-900 border border-slate-800 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">
-                Total Score
-              </p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-slate-100 font-mono">
-                  {stats.correctCount}
-                </span>
-                <span className="text-sm font-semibold text-slate-500 font-mono">
-                  / {stats.totalQuestions}
-                </span>
-              </div>
-              <p className="text-[11px] text-emerald-400 mt-1">
-                {stats.overallPercentage}% overall score
-              </p>
+      {/* Main Content Area (Open, Boxless Layout) */}
+      <div className="flex-1 max-w-5xl w-full mx-auto p-6 space-y-8">
+        {/* Performance Summary Metrics (Seamless, Open, No Box Containers) */}
+        <div className="py-2 grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+          {/* Metric 1 */}
+          <div>
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">
+              Total Score
+            </p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold text-white font-mono">
+                {stats.correctCount}
+              </span>
+              <span className="text-sm font-semibold text-slate-500 font-mono">
+                / {stats.totalQuestions}
+              </span>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-brand-500/10 text-brand-400 flex items-center justify-center border border-brand-500/20">
-              <Award className="w-6 h-6" />
-            </div>
+            <p className="text-[11px] text-cyan-400 mt-1">
+              {stats.overallPercentage}% overall score
+            </p>
           </div>
 
-          {/* Card 2: Strict Accuracy % */}
-          <div className="p-5 rounded-2xl bg-dark-900 border border-slate-800 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">
-                Strict Accuracy
-              </p>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-3xl font-extrabold text-emerald-400 font-mono">
-                  {stats.accuracyPercentage}%
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Based strictly on {stats.attemptedCount} attempted
-              </p>
+          {/* Metric 2 */}
+          <div>
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">
+              Strict Accuracy
+            </p>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-3xl font-extrabold text-cyan-300 font-mono">
+                {stats.accuracyPercentage}%
+              </span>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-              <Target className="w-6 h-6" />
-            </div>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Based on {stats.attemptedCount} attempted
+            </p>
           </div>
 
-          {/* Card 3: Attempt Breakdown */}
-          <div className="p-5 rounded-2xl bg-dark-900 border border-slate-800 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">
-                Questions Attempted
-              </p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-slate-100 font-mono">
-                  {stats.attemptedCount}
-                </span>
-                <span className="text-sm font-semibold text-slate-500 font-mono">
-                  / {stats.totalQuestions}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 mt-1">
-                {stats.unattemptedCount} unattempted
-              </p>
+          {/* Metric 3 */}
+          <div>
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">
+              Attempted
+            </p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold text-white font-mono">
+                {stats.attemptedCount}
+              </span>
+              <span className="text-sm font-semibold text-slate-500 font-mono">
+                / {stats.totalQuestions}
+              </span>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
-              <BarChart3 className="w-6 h-6" />
-            </div>
+            <p className="text-[11px] text-slate-400 mt-1">
+              {stats.unattemptedCount} unattempted
+            </p>
           </div>
 
-          {/* Card 4: Avg Time Per Question */}
-          <div className="p-5 rounded-2xl bg-dark-900 border border-slate-800 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">
-                Avg. Time / Question
-              </p>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-3xl font-extrabold text-cyan-300 font-mono">
-                  {stats.averageTimePerQuestion}s
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Total duration: {formatTime(timeTakenSeconds || stats.totalTimeSeconds)}
-              </p>
+          {/* Metric 4 */}
+          <div>
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">
+              Avg. Time / Question
+            </p>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-3xl font-extrabold text-cyan-300 font-mono">
+                {stats.averageTimePerQuestion}s
+              </span>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center border border-cyan-500/20">
-              <Clock className="w-6 h-6" />
-            </div>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Total duration: {formatTime(timeTakenSeconds || stats.totalTimeSeconds)}
+            </p>
           </div>
         </div>
 
-        {/* Detailed Question Review Section */}
-        <div className="bg-dark-900 rounded-2xl border border-slate-800 overflow-hidden shadow-sm">
+        {/* Detailed Question Review Section (Clean, Open Paper Review) */}
+        <div className="border-t border-slate-800/80 pt-6 space-y-4">
           {/* Section Header & Filters */}
-          <div className="p-5 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-dark-850">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
                 <span>Detailed Paper Review</span>
                 <span className="text-xs font-normal text-slate-400">
-                  (Includes exact time tracking & AI explanations)
+                  (Time tracking & solutions)
                 </span>
               </h2>
             </div>
 
-            {/* Filter Pills */}
-            <div className="flex items-center gap-1.5 bg-dark-950 p-1 rounded-xl border border-slate-800 text-xs">
+            {/* Filter Pills (Clean, Borderless Switch) */}
+            <div className="flex items-center gap-1.5 text-xs">
               <button
                 onClick={() => setFilter('all')}
-                className={`px-3 py-1 rounded-lg font-medium transition-colors ${
-                  filter === 'all' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'
+                className={`px-3 py-1 rounded-full font-medium transition-colors cursor-pointer ${
+                  filter === 'all' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white bg-slate-800/40'
                 }`}
               >
                 All ({stats.totalQuestions})
               </button>
               <button
                 onClick={() => setFilter('correct')}
-                className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+                className={`px-3 py-1 rounded-full font-medium transition-colors cursor-pointer ${
                   filter === 'correct'
-                    ? 'bg-emerald-600 text-white'
-                    : 'text-emerald-400 hover:text-emerald-300'
+                    ? 'bg-cyan-600 text-white shadow-sm'
+                    : 'text-cyan-400 hover:text-cyan-300 bg-slate-800/40'
                 }`}
               >
                 Correct ({stats.correctCount})
               </button>
               <button
                 onClick={() => setFilter('incorrect')}
-                className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+                className={`px-3 py-1 rounded-full font-medium transition-colors cursor-pointer ${
                   filter === 'incorrect'
-                    ? 'bg-rose-600 text-white'
-                    : 'text-rose-400 hover:text-rose-300'
+                    ? 'bg-slate-700 text-rose-300'
+                    : 'text-rose-400 hover:text-rose-300 bg-slate-800/40'
                 }`}
               >
                 Incorrect ({stats.incorrectCount})
               </button>
               <button
                 onClick={() => setFilter('unattempted')}
-                className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+                className={`px-3 py-1 rounded-full font-medium transition-colors cursor-pointer ${
                   filter === 'unattempted'
                     ? 'bg-slate-700 text-white'
-                    : 'text-slate-400 hover:text-slate-300'
+                    : 'text-slate-400 hover:text-slate-300 bg-slate-800/40'
                 }`}
               >
                 Skipped ({stats.unattemptedCount})
@@ -288,7 +268,7 @@ export default function AnalyticsView({
 
                   {/* Question Text */}
                   <p className="text-sm sm:text-base font-medium text-slate-100 leading-relaxed pl-1">
-                    {item.questionText}
+                    {cleanQuestionStatement(item.questionText, quiz?.sourceFiles)}
                   </p>
 
                   {/* Options List */}

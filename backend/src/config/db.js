@@ -31,7 +31,9 @@ const initialStore = {
   sources: [],
   quizzes: [],
   exam_attempts: [],
-  chat_messages: []
+  chat_messages: [],
+  exam_prep_questions: [],
+  exam_prep_tests: []
 };
 
 // Migrate legacy sources.json if it exists
@@ -55,6 +57,8 @@ export function readFallback() {
     const raw = fs.readFileSync(fallbackFile, 'utf8');
     const data = JSON.parse(raw);
     if (!data.users) data.users = [];
+    if (!data.exam_prep_questions) data.exam_prep_questions = [];
+    if (!data.exam_prep_tests) data.exam_prep_tests = [];
     if (!data.workspaces || data.workspaces.length === 0) {
       data.workspaces = initialStore.workspaces;
       writeFallback(data);
@@ -223,11 +227,50 @@ export async function initDB() {
         candidate_id VARCHAR(50),
         target_exam VARCHAR(100) DEFAULT 'GATE CS / IT',
         auth_provider VARCHAR(50) DEFAULT 'local',
+        role VARCHAR(50) DEFAULT 'student',
         otp_code VARCHAR(10),
         otp_expires_at TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_user_email (email)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    // 7. Exam Prep Question Bank (Dedicated Database for Official Exam Prep / GATE CS/IT)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS exam_prep_questions (
+        id VARCHAR(64) PRIMARY KEY,
+        exam_id VARCHAR(50) DEFAULT 'gate_cs',
+        subject_id VARCHAR(64) NOT NULL,
+        subject_name VARCHAR(150) NOT NULL,
+        topic VARCHAR(150),
+        difficulty VARCHAR(50) DEFAULT 'Hard',
+        question_text LONGTEXT NOT NULL,
+        option_a TEXT NOT NULL,
+        option_b TEXT NOT NULL,
+        option_c TEXT NOT NULL,
+        option_d TEXT NOT NULL,
+        correct_answer VARCHAR(10) NOT NULL,
+        explanation LONGTEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_prep_subject (subject_id),
+        INDEX idx_prep_exam (exam_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    // 8. Exam Prep Tests (Generated Assessments from Database Bank)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS exam_prep_tests (
+        id VARCHAR(64) PRIMARY KEY,
+        exam_id VARCHAR(50) DEFAULT 'gate_cs',
+        title VARCHAR(255) NOT NULL,
+        subject_ids TEXT,
+        difficulty VARCHAR(50) DEFAULT 'Hard',
+        total_questions INT NOT NULL,
+        time_limit_minutes INT NOT NULL,
+        questions_json LONGTEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_test_exam (exam_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
@@ -261,15 +304,19 @@ export async function query(sql, params = []) {
   const lowerSql = sql.trim().toLowerCase();
 
   // USERS & AUTHENTICATION
-  if (lowerSql.startsWith('select * from users where email =')) {
-    const email = (params[0] || '').trim().toLowerCase();
-    const found = (store.users || []).find(u => u.email.toLowerCase() === email);
-    return found ? [found] : [];
-  }
-  if (lowerSql.startsWith('select * from users where id =')) {
-    const id = params[0];
-    const found = (store.users || []).find(u => u.id === id);
-    return found ? [found] : [];
+  if (lowerSql.startsWith('select * from users')) {
+    let list = [...(store.users || [])];
+    if (lowerSql.includes('where email =')) {
+      const email = (params[0] || '').trim().toLowerCase();
+      const found = list.find(u => u.email.toLowerCase() === email);
+      return found ? [found] : [];
+    }
+    if (lowerSql.includes('where id =')) {
+      const id = params[0];
+      const found = list.find(u => u.id === id);
+      return found ? [found] : [];
+    }
+    return list;
   }
   if (lowerSql.startsWith('insert into users')) {
     const [id, name, email, password_hash, candidate_id, target_exam, auth_provider] = params;
@@ -281,6 +328,7 @@ export async function query(sql, params = []) {
       candidate_id: candidate_id || null,
       target_exam: target_exam || 'GATE CS / IT',
       auth_provider: auth_provider || 'local',
+      role: email && email.includes('admin') ? 'admin' : 'student',
       otp_code: null,
       otp_expires_at: null,
       created_at: new Date().toISOString(),
@@ -290,6 +338,28 @@ export async function query(sql, params = []) {
     store.users.push(userRecord);
     writeFallback(store);
     return { affectedRows: 1, insertId: id };
+  }
+  if (lowerSql.startsWith('update users set name = ?, candidate_id = ?, target_exam = ? where id = ?')) {
+    const [name, candidate_id, target_exam, id] = params;
+    const user = (store.users || []).find(u => u.id === id);
+    if (user) {
+      if (name) user.name = name.trim();
+      if (candidate_id) user.candidate_id = candidate_id.trim();
+      if (target_exam) user.target_exam = target_exam.trim();
+      user.updated_at = new Date().toISOString();
+      writeFallback(store);
+      return { affectedRows: 1 };
+    }
+    return { affectedRows: 0 };
+  }
+  if (lowerSql.startsWith('delete from users where id =')) {
+    const id = params[0];
+    store.users = (store.users || []).filter(u => u.id !== id);
+    if (store.exam_attempts) {
+      store.exam_attempts = store.exam_attempts.filter(a => a.user_id !== id);
+    }
+    writeFallback(store);
+    return { affectedRows: 1 };
   }
   if (lowerSql.includes('update users set otp_code = ?, otp_expires_at = ? where email = ?')) {
     const [otp_code, otp_expires_at, email] = params;
@@ -528,12 +598,13 @@ export async function query(sql, params = []) {
         quiz_id, quiz_title, difficulty,
         total_questions, attempted_count, correct_count, incorrect_count,
         accuracy_percentage, overall_percentage, time_taken_seconds,
-        quiz_json, user_answers_json, question_times_json
+        quiz_json, user_answers_json, question_times_json, category
       ] = params;
 
       attempt = {
         id,
         workspace_id: workspace_id || 'ws_default',
+        category: category || (workspace_id === 'ws_gate_prep' ? 'examprep' : 'studio'),
         user_id: user_id || null,
         candidate_id: candidate_id || null,
         user_email: user_email || null,
@@ -651,6 +722,131 @@ export async function query(sql, params = []) {
     } else {
       store.chat_messages = (store.chat_messages || []).filter(c => c.workspace_id !== wsId);
     }
+    writeFallback(store);
+    return { affectedRows: 1 };
+  }
+
+  // EXAM PREP QUESTION BANK (Dedicated Database for Exam Prep / GATE CS/IT)
+  if (lowerSql.startsWith('select * from exam_prep_questions')) {
+    let list = [...(store.exam_prep_questions || [])];
+    if (lowerSql.includes('where id =')) {
+      const qId = params[0];
+      return list.filter(q => q.id === qId);
+    }
+    if (lowerSql.includes('where subject_id =')) {
+      const subId = params[0];
+      list = list.filter(q => q.subject_id === subId);
+    } else if (lowerSql.includes('where exam_id =')) {
+      const examId = params[0];
+      list = list.filter(q => q.exam_id === examId);
+    }
+    if (lowerSql.includes('and difficulty =')) {
+      const diff = params[1] || params[0];
+      list = list.filter(q => q.difficulty === diff);
+    }
+    return list;
+  }
+  if (lowerSql.startsWith('insert into exam_prep_questions')) {
+    const [
+      id, exam_id, subject_id, subject_name, topic, difficulty,
+      question_text, option_a, option_b, option_c, option_d,
+      correct_answer, explanation
+    ] = params;
+
+    const record = {
+      id,
+      exam_id: exam_id || 'gate_cs',
+      subject_id,
+      subject_name,
+      topic: topic || '',
+      difficulty: difficulty || 'Hard',
+      question_text,
+      option_a,
+      option_b,
+      option_c,
+      option_d,
+      correct_answer,
+      explanation: explanation || '',
+      created_at: new Date().toISOString()
+    };
+
+    if (!store.exam_prep_questions) store.exam_prep_questions = [];
+    // If exists, replace; otherwise push
+    const idx = store.exam_prep_questions.findIndex(q => q.id === id);
+    if (idx >= 0) {
+      store.exam_prep_questions[idx] = record;
+    } else {
+      store.exam_prep_questions.push(record);
+    }
+    writeFallback(store);
+    return { affectedRows: 1, insertId: id };
+  }
+  if (lowerSql.startsWith('delete from exam_prep_questions where id =')) {
+    const id = params[0];
+    store.exam_prep_questions = (store.exam_prep_questions || []).filter(q => q.id !== id);
+    writeFallback(store);
+    return { affectedRows: 1 };
+  }
+  if (lowerSql.startsWith('update exam_prep_questions set')) {
+    const [
+      subject_id, subject_name, topic, difficulty,
+      question_text, option_a, option_b, option_c, option_d,
+      correct_answer, explanation, id
+    ] = params;
+    const q = (store.exam_prep_questions || []).find(item => item.id === id);
+    if (q) {
+      if (subject_id) q.subject_id = subject_id;
+      if (subject_name) q.subject_name = subject_name;
+      if (topic !== undefined) q.topic = topic;
+      if (difficulty) q.difficulty = difficulty;
+      if (question_text) q.question_text = question_text;
+      if (option_a) q.option_a = option_a;
+      if (option_b) q.option_b = option_b;
+      if (option_c) q.option_c = option_c;
+      if (option_d) q.option_d = option_d;
+      if (correct_answer) q.correct_answer = correct_answer;
+      if (explanation !== undefined) q.explanation = explanation;
+      q.updated_at = new Date().toISOString();
+      writeFallback(store);
+      return { affectedRows: 1 };
+    }
+    return { affectedRows: 0 };
+  }
+
+  // EXAM PREP TESTS (Generated CBT Assessments)
+  if (lowerSql.startsWith('select * from exam_prep_tests')) {
+    let list = [...(store.exam_prep_tests || [])];
+    if (lowerSql.includes('where id =')) {
+      const tId = params[0];
+      return list.filter(t => t.id === tId);
+    }
+    if (lowerSql.includes('where exam_id =')) {
+      const examId = params[0];
+      list = list.filter(t => t.exam_id === examId);
+    }
+    return list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  }
+  if (lowerSql.startsWith('insert into exam_prep_tests')) {
+    const [id, exam_id, title, subject_ids, difficulty, total_questions, time_limit_minutes, questions_json] = params;
+    const testRecord = {
+      id,
+      exam_id: exam_id || 'gate_cs',
+      title,
+      subject_ids,
+      difficulty: difficulty || 'Hard',
+      total_questions: Number(total_questions),
+      time_limit_minutes: Number(time_limit_minutes),
+      questions_json,
+      created_at: new Date().toISOString()
+    };
+    if (!store.exam_prep_tests) store.exam_prep_tests = [];
+    store.exam_prep_tests.unshift(testRecord);
+    writeFallback(store);
+    return { affectedRows: 1, insertId: id };
+  }
+  if (lowerSql.startsWith('delete from exam_prep_tests where id =')) {
+    const id = params[0];
+    store.exam_prep_tests = (store.exam_prep_tests || []).filter(t => t.id !== id);
     writeFallback(store);
     return { affectedRows: 1 };
   }

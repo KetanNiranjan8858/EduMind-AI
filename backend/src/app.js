@@ -11,6 +11,8 @@ import aiRoutes from './routes/aiRoutes.js';
 import workspaceRoutes from './routes/workspaceRoutes.js';
 import historyRoutes from './routes/historyRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import examPrepRoutes from './routes/examPrepRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 
 dotenv.config();
 
@@ -43,6 +45,8 @@ app.use('/api/workspaces', workspaceRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/history', historyRoutes);
+app.use('/api/examprep', examPrepRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

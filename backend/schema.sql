@@ -1,4 +1,4 @@
--- ==========================================================
+run -- ==========================================================
 -- EduMind AI — Complete Relational Database Schema
 -- Multi-User Account Protection & Per-User Content Isolation
 -- Compatible with MySQL 8.0+ / MariaDB
@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
   candidate_id VARCHAR(50),
   target_exam VARCHAR(100) DEFAULT 'GATE CS / IT',
   auth_provider VARCHAR(50) DEFAULT 'local',
+  role VARCHAR(50) DEFAULT 'student',
   otp_code VARCHAR(10),
   otp_expires_at TIMESTAMP NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -81,10 +82,11 @@ CREATE TABLE IF NOT EXISTS quizzes (
     REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 5. EXAM ATTEMPTS (Exam History Linked to Candidate & User ID)
+-- 5. EXAM ATTEMPTS (Exam History Linked to Candidate & User ID — Separated by Category)
 CREATE TABLE IF NOT EXISTS exam_attempts (
   id VARCHAR(64) PRIMARY KEY,
   workspace_id VARCHAR(64) NOT NULL,
+  category VARCHAR(50) DEFAULT 'studio', -- 'studio' or 'examprep'
   user_id VARCHAR(64) DEFAULT NULL,
   candidate_id VARCHAR(64) DEFAULT NULL,
   user_email VARCHAR(150) DEFAULT NULL,
@@ -106,6 +108,7 @@ CREATE TABLE IF NOT EXISTS exam_attempts (
   INDEX idx_workspace_attempts (workspace_id),
   INDEX idx_user_attempts (user_id),
   INDEX idx_candidate_attempts (candidate_id),
+  INDEX idx_attempt_category (category),
   INDEX idx_submitted_at (submitted_at DESC),
   CONSTRAINT fk_attempt_workspace FOREIGN KEY (workspace_id) 
     REFERENCES workspaces(id) ON DELETE CASCADE
@@ -124,4 +127,39 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   INDEX idx_chat_created (created_at ASC),
   CONSTRAINT fk_chat_workspace FOREIGN KEY (workspace_id) 
     REFERENCES workspaces(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 7. EXAM PREP QUESTION BANK (Dedicated Database for Official Exam Prep / GATE CS/IT)
+CREATE TABLE IF NOT EXISTS exam_prep_questions (
+  id VARCHAR(64) PRIMARY KEY,
+  exam_id VARCHAR(50) DEFAULT 'gate_cs',
+  subject_id VARCHAR(64) NOT NULL,
+  subject_name VARCHAR(150) NOT NULL,
+  topic VARCHAR(150),
+  difficulty VARCHAR(50) DEFAULT 'Hard',
+  question_text LONGTEXT NOT NULL,
+  option_a TEXT NOT NULL,
+  option_b TEXT NOT NULL,
+  option_c TEXT NOT NULL,
+  option_d TEXT NOT NULL,
+  correct_answer VARCHAR(10) NOT NULL, -- 'A', 'B', 'C', 'D'
+  explanation LONGTEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_prep_subject (subject_id),
+  INDEX idx_prep_exam (exam_id),
+  INDEX idx_prep_difficulty (difficulty)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 8. EXAM PREP TESTS (Generated Assessments & Mock Runs from Database Bank)
+CREATE TABLE IF NOT EXISTS exam_prep_tests (
+  id VARCHAR(64) PRIMARY KEY,
+  exam_id VARCHAR(50) DEFAULT 'gate_cs',
+  title VARCHAR(255) NOT NULL,
+  subject_ids TEXT,
+  difficulty VARCHAR(50) DEFAULT 'Hard',
+  total_questions INT NOT NULL,
+  time_limit_minutes INT NOT NULL,
+  questions_json LONGTEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_test_exam (exam_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

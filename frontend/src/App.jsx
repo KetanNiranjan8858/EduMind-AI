@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Brain,
   Layers,
   History,
   Target,
   User,
-  Sparkles
+  Sparkles,
+  Shield
 } from 'lucide-react';
 
 import SourcePanel from './components/SourcePanel';
@@ -19,6 +20,8 @@ import LoginModal from './components/LoginModal';
 import ExamPrepDashboard from './components/ExamPrepDashboard';
 import ExamView from './components/ExamView';
 import AnalyticsView from './components/AnalyticsView';
+import { AdminPortal, AdminAccessGate } from './components/admin';
+import ResizeHandle from './components/ResizeHandle';
 
 import {
   fetchWorkspaces,
@@ -37,14 +40,18 @@ import {
 import { calculateScore } from './utils/helpers';
 
 export default function App() {
-  // Mode: 'studio' | 'exam' | 'analytics' | 'examprep'
+  // Mode: 'studio' | 'exam' | 'analytics' | 'examprep' | 'admin'
   const [viewMode, setViewMode] = useState(() => {
+    const path = window.location.pathname.toLowerCase();
     const urlParams = new URLSearchParams(window.location.search);
+    if (path === '/admin' || urlParams.get('mode') === 'admin') {
+      return 'admin';
+    }
+    if (path === '/examprep' || urlParams.get('mode') === 'examprep' || urlParams.get('mode') === 'prep') {
+      return 'examprep';
+    }
     if (urlParams.get('mode') === 'cbt' || urlParams.get('mode') === 'exam') {
       return 'exam';
-    }
-    if (urlParams.get('mode') === 'examprep' || urlParams.get('mode') === 'prep') {
-      return 'examprep';
     }
     return 'studio';
   });
@@ -79,13 +86,106 @@ export default function App() {
     }
   });
 
+  // Dynamic window width for real-time main content calculation
+  const [windowWidth, setWindowWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1280));
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const [isResizing, setIsResizing] = useState(false);
+
+  // Draggable sidebar widths with localStorage persistence
+  const [leftSidebarWidth, setLeftSidebarWidth] = useState(() => {
+    try {
+      const saved = localStorage.getItem('edumind_sidebar_width');
+      const parsed = parseInt(saved, 10);
+      return !isNaN(parsed) && parsed >= 220 && parsed <= 560 ? parsed : 320;
+    } catch {
+      return 320;
+    }
+  });
+
+  const [rightSidebarWidth, setRightSidebarWidth] = useState(() => {
+    try {
+      const saved = localStorage.getItem('edumind_right_sidebar_width');
+      const parsed = parseInt(saved, 10);
+      return !isNaN(parsed) && parsed >= 260 && parsed <= 560 ? parsed : 352;
+    } catch {
+      return 352;
+    }
+  });
+
+  // Calculate dynamic main content width in real time
+  const mainContentWidth = Math.max(300, windowWidth - leftSidebarWidth - rightSidebarWidth - 16);
+
+  const handleLeftSidebarResize = useCallback((clientX) => {
+    const minWidth = 220;
+    const maxWidth = 560;
+    const clamped = Math.max(minWidth, Math.min(maxWidth, clientX));
+    setLeftSidebarWidth(clamped);
+  }, []);
+
+  const handleLeftSidebarDragEnd = useCallback((clientX) => {
+    setIsResizing(false);
+    const minWidth = 220;
+    const maxWidth = 560;
+    const clamped = Math.max(minWidth, Math.min(maxWidth, clientX));
+    try {
+      localStorage.setItem('edumind_sidebar_width', clamped.toString());
+    } catch {}
+  }, []);
+
+  const handleLeftSidebarReset = useCallback(() => {
+    setLeftSidebarWidth(320);
+    try {
+      localStorage.removeItem('edumind_sidebar_width');
+    } catch {}
+  }, []);
+
+  const handleRightSidebarResize = useCallback((clientX) => {
+    const minWidth = 260;
+    const maxWidth = 560;
+    const newWidth = window.innerWidth - clientX;
+    const clamped = Math.max(minWidth, Math.min(maxWidth, newWidth));
+    setRightSidebarWidth(clamped);
+  }, []);
+
+  const handleRightSidebarDragEnd = useCallback((clientX) => {
+    setIsResizing(false);
+    const minWidth = 260;
+    const maxWidth = 560;
+    const newWidth = window.innerWidth - clientX;
+    const clamped = Math.max(minWidth, Math.min(maxWidth, newWidth));
+    try {
+      localStorage.setItem('edumind_right_sidebar_width', clamped.toString());
+    } catch {}
+  }, []);
+
+  const handleRightSidebarReset = useCallback(() => {
+    setRightSidebarWidth(352);
+    try {
+      localStorage.removeItem('edumind_right_sidebar_width');
+    } catch {}
+  }, []);
+
   // Active Workspace Data
   const [sources, setSources] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [loadingSources, setLoadingSources] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [generatingQuiz, setGeneratingQuiz] = useState(false);
-  const [examHistory, setExamHistory] = useState([]);
+  const [studioExamHistory, setStudioExamHistory] = useState([]);
+  const [examPrepHistory, setExamPrepHistory] = useState([]);
+  const [examOrigin, setExamOrigin] = useState(() => {
+    try {
+      return localStorage.getItem('edumind_exam_origin') || 'studio';
+    } catch {
+      return 'studio';
+    }
+  });
 
   // Modals
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
@@ -140,6 +240,39 @@ export default function App() {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
+  // Sync browser URL with viewMode (supporting /admin route)
+  useEffect(() => {
+    const currentPath = window.location.pathname.toLowerCase();
+    if (viewMode === 'admin') {
+      if (currentPath !== '/admin') {
+        window.history.pushState({ mode: 'admin' }, '', '/admin');
+      }
+    } else if (viewMode === 'studio') {
+      if (currentPath === '/admin') {
+        window.history.pushState({ mode: 'studio' }, '', '/');
+      }
+    }
+  }, [viewMode]);
+
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    function handlePopState() {
+      const path = window.location.pathname.toLowerCase();
+      const urlParams = new URLSearchParams(window.location.search);
+      if (path === '/admin' || urlParams.get('mode') === 'admin') {
+        setViewMode('admin');
+      } else if (path === '/examprep' || urlParams.get('mode') === 'examprep' || urlParams.get('mode') === 'prep') {
+        setViewMode('examprep');
+      } else if (urlParams.get('mode') === 'cbt' || urlParams.get('mode') === 'exam') {
+        setViewMode('exam');
+      } else {
+        setViewMode('studio');
+      }
+    }
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   // Load Workspaces on mount and when user login state changes
   useEffect(() => {
     loadWorkspaces(currentUser?.id);
@@ -187,12 +320,19 @@ export default function App() {
   async function loadWorkspaceData(wsId, userId = currentUser?.id) {
     try {
       setLoadingSources(true);
-      const [srcRes, histRes] = await Promise.all([
+      const [srcRes, studioHistRes, prepHistRes] = await Promise.all([
         fetchSources(wsId, userId),
         fetchExamHistory({
           workspaceId: wsId,
           userId: userId,
-          candidateId: currentUser?.candidateId
+          candidateId: currentUser?.candidateId,
+          category: 'studio'
+        }).catch(() => ({ history: [] })),
+        fetchExamHistory({
+          workspaceId: 'ws_gate_prep',
+          userId: userId,
+          candidateId: currentUser?.candidateId,
+          category: 'examprep'
         }).catch(() => ({ history: [] }))
       ]);
 
@@ -204,10 +344,16 @@ export default function App() {
         setSelectedIds([]);
       }
 
-      if (histRes.history) {
-        setExamHistory(histRes.history);
+      if (studioHistRes.history) {
+        setStudioExamHistory(studioHistRes.history);
       } else {
-        setExamHistory([]);
+        setStudioExamHistory([]);
+      }
+
+      if (prepHistRes.history) {
+        setExamPrepHistory(prepHistRes.history);
+      } else {
+        setExamPrepHistory([]);
       }
     } catch (err) {
       console.warn('Error loading workspace data:', err.message);
@@ -349,8 +495,15 @@ export default function App() {
   }
 
   // Launch CBT Exam
-  function handleLaunchExam(quiz) {
+  function handleLaunchExam(quiz, origin) {
+    const detectedOrigin = origin || (
+      quiz?.track === 'gate_cs' || quiz?.subjectId || (quiz?.quizTitle && quiz.quizTitle.toLowerCase().includes('gate'))
+        ? 'examprep'
+        : 'studio'
+    );
+    setExamOrigin(detectedOrigin);
     try {
+      localStorage.setItem('edumind_exam_origin', detectedOrigin);
       localStorage.setItem('edumind_active_exam', JSON.stringify(quiz));
       setActiveQuiz(quiz);
       setViewMode('exam');
@@ -377,26 +530,48 @@ export default function App() {
       submissionData.questionTimes
     );
 
-    // Persist attempt in DB history linked to Candidate ID
+    const isExamPrep =
+      examOrigin === 'examprep' ||
+      submissionData.quiz?.track === 'gate_cs' ||
+      Boolean(submissionData.quiz?.subjectId) ||
+      (submissionData.quiz?.quizTitle && submissionData.quiz.quizTitle.toLowerCase().includes('gate'));
+
+    const targetCategory = isExamPrep ? 'examprep' : 'studio';
+    const targetWorkspaceId = isExamPrep ? 'ws_gate_prep' : activeWorkspaceId;
+
+    // Persist attempt in DB history strictly separated by category & workspace
     try {
       await saveExamAttempt({
-        workspaceId: activeWorkspaceId,
+        workspaceId: targetWorkspaceId,
         userId: currentUser?.id || null,
         candidateId: currentUser?.candidateId || null,
         userEmail: currentUser?.email || null,
         userName: currentUser?.name || null,
+        category: targetCategory,
         quiz: submissionData.quiz,
         userAnswers: submissionData.userAnswers,
         questionTimes: submissionData.questionTimes,
         timeTakenSeconds: submissionData.timeTakenSeconds,
         stats
       });
-      const histRes = await fetchExamHistory({
-        workspaceId: activeWorkspaceId,
-        userId: currentUser?.id,
-        candidateId: currentUser?.candidateId
-      });
-      if (histRes.history) setExamHistory(histRes.history);
+
+      if (isExamPrep) {
+        const histRes = await fetchExamHistory({
+          workspaceId: 'ws_gate_prep',
+          userId: currentUser?.id,
+          candidateId: currentUser?.candidateId,
+          category: 'examprep'
+        });
+        if (histRes.history) setExamPrepHistory(histRes.history);
+      } else {
+        const histRes = await fetchExamHistory({
+          workspaceId: activeWorkspaceId,
+          userId: currentUser?.id,
+          candidateId: currentUser?.candidateId,
+          category: 'studio'
+        });
+        if (histRes.history) setStudioExamHistory(histRes.history);
+      }
     } catch (err) {
       console.warn('Failed to persist exam attempt to DB:', err);
     }
@@ -407,10 +582,20 @@ export default function App() {
 
   function handleReturnToStudio() {
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('mode') === 'cbt' || urlParams.get('mode') === 'exam' || urlParams.get('mode') === 'examprep') {
-      window.history.replaceState({}, document.title, window.location.pathname);
+    if (
+      urlParams.get('mode') === 'cbt' ||
+      urlParams.get('mode') === 'exam' ||
+      urlParams.get('mode') === 'examprep' ||
+      urlParams.get('mode') === 'admin' ||
+      window.location.pathname.toLowerCase() === '/admin'
+    ) {
+      window.history.replaceState({}, document.title, '/');
     }
-    setViewMode('studio');
+    if (examOrigin === 'examprep') {
+      setViewMode('examprep');
+    } else {
+      setViewMode('studio');
+    }
   }
 
   function handleRetakeExam() {
@@ -423,6 +608,11 @@ export default function App() {
   }
 
   function handleReviewPastAttempt(attempt) {
+    const origin = attempt.category || (attempt.quiz?.track === 'gate_cs' ? 'examprep' : 'studio');
+    setExamOrigin(origin);
+    try {
+      localStorage.setItem('edumind_exam_origin', origin);
+    } catch {}
     const data = {
       quiz: attempt.quiz,
       userAnswers: attempt.userAnswers,
@@ -434,15 +624,17 @@ export default function App() {
   }
 
   function handleRetakePastAttempt(attempt) {
+    const origin = attempt.category || (attempt.quiz?.track === 'gate_cs' ? 'examprep' : 'studio');
     setActiveQuiz(attempt.quiz);
-    handleLaunchExam(attempt.quiz);
+    handleLaunchExam(attempt.quiz, origin);
   }
 
   async function handleDeletePastAttempt(id) {
     if (!window.confirm('Delete this exam attempt record?')) return;
     try {
       await deleteExamAttempt(id);
-      setExamHistory(prev => prev.filter(a => a.id !== id));
+      setStudioExamHistory(prev => prev.filter(a => a.id !== id));
+      setExamPrepHistory(prev => prev.filter(a => a.id !== id));
     } catch (err) {
       alert('Failed to delete attempt: ' + err.message);
     }
@@ -461,7 +653,8 @@ export default function App() {
     // Clear all in-memory user data immediately so that nothing persists in the UI
     setSources([]);
     setSelectedIds([]);
-    setExamHistory([]);
+    setStudioExamHistory([]);
+    setExamPrepHistory([]);
     setRecentQuizzes([]);
     setActiveWorkspaceId('ws_default');
     loadWorkspaces(null);
@@ -505,9 +698,10 @@ export default function App() {
       <>
         <ExamPrepDashboard
           currentUser={currentUser}
-          examHistory={examHistory}
-          onLaunchExam={handleLaunchExam}
+          examHistory={examPrepHistory}
+          onLaunchExam={(quiz) => handleLaunchExam(quiz, 'examprep')}
           onReturnToStudio={handleReturnToStudio}
+          onOpenAdmin={() => setViewMode('admin')}
           onRequireLogin={() => {
             setLoginPromptMessage('Please sign in or register to attempt CBT exams and track scores.');
             setIsLoginModalOpen(true);
@@ -531,37 +725,58 @@ export default function App() {
     );
   }
 
+  // Route 4: Institutional Admin Portal (Protected: Only Admin Allowed)
+  if (viewMode === 'admin') {
+    const isAdmin = currentUser?.role === 'admin';
+    if (!isAdmin) {
+      return (
+        <AdminAccessGate
+          currentUser={currentUser}
+          onAdminVerified={(elevatedUser) => {
+            setCurrentUser(elevatedUser);
+          }}
+          onReturnToStudio={handleReturnToStudio}
+        />
+      );
+    }
+    return (
+      <AdminPortal
+        currentUser={currentUser}
+      />
+    );
+  }
+
   const selectedSourcesList = sources.filter((s) => selectedIds.includes(s.id));
 
-  // Route 4: Central Studio (3-Panel Layout)
+  // Route 5: Central Studio (3-Panel Layout)
   return (
-    <div className="h-screen flex flex-col bg-dark-950 text-slate-100 overflow-hidden font-sans">
-      {/* Top Application Bar: Clean branding + Exam Prep & Login Button */}
-      <header className="h-14 bg-dark-900 border-b border-slate-800 px-5 flex items-center justify-between shrink-0 shadow-sm z-30">
+    <div className="h-screen flex flex-col bg-[#F4EFE6] text-[#1C1917] overflow-hidden font-sans">
+      {/* Top Application Bar matching the theme screenshot */}
+      <header className="h-14 bg-[#F4EFE6] px-5 flex items-center justify-between shrink-0 z-30">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-600 to-rose-600 flex items-center justify-center text-white shadow-md shadow-brand-500/25">
-            <Brain className="w-5 h-5" />
+          <div className="w-8 h-8 rounded-xl bg-[#173F3D] flex items-center justify-center text-white shadow-sm">
+            <Brain className="w-5 h-5 text-[#FAF7F2]" />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="font-extrabold text-base tracking-tight text-white">
-              EduMind <span className="text-brand-400">AI</span>
+          <div className="flex items-center gap-2.5">
+            <span className="font-bold text-base tracking-tight text-[#1C1917]">
+              EduMind AI
             </span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-500/10 text-brand-300 border border-brand-500/20">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#E8DFCF] text-[#173F3D] border border-[#DCD2C0]">
               LMS & CBT Engine
             </span>
           </div>
         </div>
 
         {/* Global Controls: Exam Prep & Login Button */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {/* Exam Prep Option */}
           <button
             type="button"
             onClick={() => setViewMode('examprep')}
-            className="px-3 py-1.5 bg-gradient-to-r from-rose-500/15 to-purple-500/15 hover:from-rose-500/25 hover:to-purple-500/25 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+            className="px-3.5 py-1.5 bg-white hover:bg-[#FAF7F2] text-[#1C1917] border border-[#DCD2C0] rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer group"
             title="Open Exam Preparation Hub & Curated CBT Library"
           >
-            <Target className="w-3.5 h-3.5 text-rose-400" />
+            <Target className="w-3.5 h-3.5 text-[#173F3D] group-hover:rotate-45 transition-transform" />
             <span>Exam Prep</span>
           </button>
 
@@ -572,27 +787,32 @@ export default function App() {
               setLoginPromptMessage('');
               setIsLoginModalOpen(true);
             }}
-            className="px-3 py-1.5 bg-dark-850 hover:bg-slate-800 text-slate-200 border border-slate-700/80 rounded-xl text-xs font-medium flex items-center gap-2 transition-all shadow-sm"
+            className="px-3.5 py-1.5 bg-white hover:bg-[#FAF7F2] text-[#1C1917] border border-[#DCD2C0] rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm transition-all cursor-pointer"
             title={currentUser ? `Signed in as ${currentUser.name}` : 'Sign in as candidate'}
           >
-            <div className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center font-bold text-[10px]">
-              {currentUser ? currentUser.name.charAt(0).toUpperCase() : <User className="w-3 h-3" />}
+            <div className="w-5 h-5 rounded-full bg-[#173F3D] text-[#FAF7F2] flex items-center justify-center font-bold text-[10px]">
+              {currentUser ? currentUser.name.charAt(0).toUpperCase() : <User className="w-3 h-3 text-[#FAF7F2]" />}
             </div>
             <span className="max-w-[120px] truncate">{currentUser ? currentUser.name : 'Login'}</span>
           </button>
         </div>
       </header>
 
-      {/* 3-Panel Main Workspace */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* 3-Panel Floating Workspace Cards on Warm Cream Canvas */}
+      <div className="flex-1 flex overflow-hidden px-3 pb-3 gap-2 bg-[#F4EFE6]">
         {/* Left Panel: Workspace List & History Just Above Sources & Notes */}
-        <aside className="w-80 shrink-0 h-full">
+        <aside
+          style={{ width: `${leftSidebarWidth}px` }}
+          className="shrink-0 h-full rounded-2xl overflow-hidden bg-white border border-[#E6DFD3] shadow-[0_2px_12px_rgba(40,30,20,0.04)] flex flex-col"
+        >
           <SourcePanel
             workspaces={workspaces}
             activeWorkspace={activeWorkspace}
             activeWorkspaceId={activeWorkspaceId}
             pinnedIds={pinnedIds}
-            examHistoryCount={examHistory.length}
+            examHistoryCount={studioExamHistory.length}
+            currentUser={currentUser}
+            onOpenAdmin={() => setViewMode('admin')}
             onSelectWorkspace={(id) => setActiveWorkspaceId(id)}
             onTogglePin={handleTogglePin}
             onUpdateWorkspaceName={handleUpdateWorkspaceName}
@@ -613,8 +833,20 @@ export default function App() {
           />
         </aside>
 
+        {/* Draggable Resize Handle between Left Sidebar and Main Content */}
+        <ResizeHandle
+          onResize={handleLeftSidebarResize}
+          onReset={handleLeftSidebarReset}
+          onDragStart={() => setIsResizing(true)}
+          onDragEnd={handleLeftSidebarDragEnd}
+        />
+
         {/* Center Panel: Central Chat Hub / Study Workspace */}
-        <main className="flex-1 h-full min-w-0">
+        <main
+          className={`flex-1 h-full min-w-0 rounded-2xl overflow-hidden bg-white border border-[#E6DFD3] shadow-[0_2px_12px_rgba(40,30,20,0.04)] flex flex-col ${
+            isResizing ? 'transition-none pointer-events-none' : ''
+          }`}
+        >
           <ChatHub
             selectedSources={selectedSourcesList}
             allSources={sources}
@@ -622,18 +854,31 @@ export default function App() {
             workspaceName={activeWorkspace.name}
             userId={currentUser?.id}
             onUpdateWorkspaceName={handleUpdateWorkspaceName}
+            contentWidth={mainContentWidth}
+            isResizing={isResizing}
           />
         </main>
 
-        {/* Right Panel: The AI Studio & Recent Outputs (340px) */}
-        <aside className="w-88 shrink-0 h-full">
+        {/* Draggable Resize Handle between Main Content and Right AI Studio */}
+        <ResizeHandle
+          onResize={handleRightSidebarResize}
+          onReset={handleRightSidebarReset}
+          onDragStart={() => setIsResizing(true)}
+          onDragEnd={handleRightSidebarDragEnd}
+        />
+
+        {/* Right Panel: The AI Studio & Recent Outputs */}
+        <aside
+          style={{ width: `${rightSidebarWidth}px` }}
+          className="shrink-0 h-full rounded-2xl overflow-hidden bg-white border border-[#E6DFD3] shadow-[0_2px_12px_rgba(40,30,20,0.04)] flex flex-col"
+        >
           <AIStudio
             currentUser={currentUser}
             selectedSources={selectedSourcesList}
             recentQuizzes={recentQuizzes}
             generating={generatingQuiz}
             onGenerateQuiz={handleGenerateQuiz}
-            onLaunchExam={handleLaunchExam}
+            onLaunchExam={(quiz) => handleLaunchExam(quiz, 'studio')}
             onDeleteRecentQuiz={handleDeleteRecentQuiz}
             onRequireLogin={() => {
               setLoginPromptMessage('Please sign in or register to generate CBT assessments.');
@@ -667,7 +912,7 @@ export default function App() {
       <HistoryModal
         isOpen={isHistoryModalOpen}
         onClose={() => setIsHistoryModalOpen(false)}
-        history={examHistory}
+        history={studioExamHistory}
         activeWorkspace={activeWorkspace}
         currentUser={currentUser}
         onReviewAttempt={handleReviewPastAttempt}

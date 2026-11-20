@@ -53,13 +53,16 @@ export async function signup(req, res) {
       [id, name.trim(), cleanEmail, passwordHash, finalCandidateId, finalTargetExam, 'local']
     );
 
+    const role = cleanEmail.includes('admin') || cleanEmail === 'ketanniranjan996@gmail.com' ? 'admin' : 'student';
+
     const userProfile = {
       id,
       name: name.trim(),
       email: cleanEmail,
       candidateId: finalCandidateId,
       targetExam: finalTargetExam,
-      authProvider: 'local'
+      authProvider: 'local',
+      role
     };
 
     return res.status(201).json({
@@ -117,13 +120,16 @@ export async function login(req, res) {
       });
     }
 
+    const userRole = user.role || (cleanEmail === 'ketanniranjan996@gmail.com' || cleanEmail.includes('admin') ? 'admin' : 'student');
+
     const userProfile = {
       id: user.id,
       name: user.name,
       email: user.email,
       candidateId: user.candidate_id,
       targetExam: user.target_exam,
-      authProvider: user.auth_provider || 'local'
+      authProvider: user.auth_provider || 'local',
+      role: userRole
     };
 
     return res.json({
@@ -156,6 +162,7 @@ export async function googleLogin(req, res) {
     let user = rows && rows[0];
 
     if (user) {
+      const userRole = user.role || (cleanEmail === 'ketanniranjan996@gmail.com' || cleanEmail.includes('admin') ? 'admin' : 'student');
       // User already exists, log in
       return res.json({
         success: true,
@@ -166,7 +173,8 @@ export async function googleLogin(req, res) {
           email: user.email,
           candidateId: user.candidate_id,
           targetExam: user.target_exam,
-          authProvider: user.auth_provider
+          authProvider: user.auth_provider,
+          role: userRole
         }
       });
     }
@@ -180,6 +188,7 @@ export async function googleLogin(req, res) {
       ? targetExam.trim()
       : 'GATE CS / IT';
     const finalName = name && name.trim() ? name.trim() : cleanEmail.split('@')[0];
+    const userRole = cleanEmail === 'ketanniranjan996@gmail.com' || cleanEmail.includes('admin') ? 'admin' : 'student';
 
     await db.query(
       'INSERT INTO users (id, name, email, password_hash, candidate_id, target_exam, auth_provider) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -195,7 +204,8 @@ export async function googleLogin(req, res) {
         email: cleanEmail,
         candidateId: finalCandidateId,
         targetExam: finalTargetExam,
-        authProvider: 'google'
+        authProvider: 'google',
+        role: userRole
       }
     });
   } catch (err) {

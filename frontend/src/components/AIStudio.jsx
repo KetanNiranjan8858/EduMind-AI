@@ -1,16 +1,12 @@
 import React, { useState } from 'react';
 import {
   Sparkles,
-  Sliders,
   Play,
   Layers,
   Clock,
-  CheckCircle2,
   AlertCircle,
   Loader2,
   Trash2,
-  ExternalLink,
-  Award,
   Lock
 } from 'lucide-react';
 
@@ -28,9 +24,9 @@ export default function AIStudio({
   const [questionCount, setQuestionCount] = useState(10);
 
   const difficultyLevels = [
-    { id: 'Easy', label: 'Easy', color: 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10' },
-    { id: 'Medium', label: 'Medium', color: 'border-blue-500/40 text-blue-400 bg-blue-500/10' },
-    { id: 'Hard', label: 'Hard', color: 'border-amber-500/40 text-amber-400 bg-amber-500/10' }
+    { id: 'Easy', label: 'Easy' },
+    { id: 'Medium', label: 'Medium' },
+    { id: 'Hard', label: 'Hard' }
   ];
 
   function handleGenerate() {
@@ -46,18 +42,18 @@ export default function AIStudio({
   }
 
   return (
-    <div className="h-full flex flex-col bg-dark-900 border-l border-slate-800">
-      {/* Header */}
-      <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-gradient-to-tr from-rose-500 to-indigo-600 rounded-lg text-white shadow-sm">
+    <div className="h-full flex flex-col bg-white overflow-hidden">
+      {/* Header matching mockup */}
+      <div className="p-4 border-b border-[#E6DFD3] flex items-center justify-between bg-white">
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 rounded-lg bg-[#FAF7F2] text-[#173F3D] border border-[#E6DFD3]">
             <Sparkles className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-slate-100 uppercase tracking-wider">
-              AI CBT Studio
+            <h2 className="text-xs font-extrabold text-[#1C1917] uppercase tracking-wider">
+              AI CBT STUDIO
             </h2>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-[#78716C]">
               Exam Generator & Recent Outputs
             </p>
           </div>
@@ -65,21 +61,21 @@ export default function AIStudio({
       </div>
 
       {/* Main Body */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-5">
-        {/* Contextual Selection Status */}
-        <div className="p-3.5 rounded-xl border border-slate-800 bg-dark-950/70">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-brand-400" />
+      <div className="flex-1 overflow-y-auto p-4 space-y-5 bg-white">
+        {/* Source Context */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#1C1917] flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-[#173F3D]" />
               Source Context
             </span>
             <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
                 !currentUser
-                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                  ? 'bg-[#FAF7F2] text-[#78716C] border-[#E6DFD3]'
                   : selectedSources.length > 0
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
+                  ? 'bg-[#E8DFCF] text-[#173F3D] border-[#DCD2C0]'
+                  : 'bg-[#FAF7F2] text-[#78716C] border-[#E6DFD3]'
               }`}
             >
               {!currentUser ? 'Sign In Required' : `${selectedSources.length} Selected`}
@@ -87,34 +83,34 @@ export default function AIStudio({
           </div>
 
           {!currentUser ? (
-            <div className="text-[11px] text-amber-300/90 flex items-center justify-between py-1">
+            <div className="text-[11px] text-[#78716C] flex items-center justify-between py-1">
               <span className="flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <Lock className="w-3.5 h-3.5 text-[#173F3D] shrink-0" />
                 Sign in to create & attempt assessments
               </span>
               <button
                 type="button"
                 onClick={onRequireLogin}
-                className="text-[10px] text-brand-400 hover:text-brand-300 underline font-semibold ml-2 cursor-pointer"
+                className="text-[10px] text-[#173F3D] hover:underline font-bold ml-2 cursor-pointer"
               >
                 Log In
               </button>
             </div>
           ) : selectedSources.length > 0 ? (
-            <div className="space-y-1 max-h-24 overflow-y-auto pr-1">
+            <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
               {selectedSources.map((s) => (
                 <div
                   key={s.id}
-                  className="text-[11px] font-mono text-slate-300 truncate bg-dark-900 px-2 py-1 rounded border border-slate-800/80 flex items-center gap-1.5"
+                  className="text-xs font-medium text-[#1C1917] truncate flex items-center gap-2 py-0.5"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand-400 shrink-0" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#173F3D] shrink-0" />
                   <span className="truncate">{s.original_name}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-[11px] text-amber-400/90 flex items-center gap-1.5 py-1">
-              <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+            <div className="text-[11px] text-[#78716C] flex items-center gap-1.5 py-1">
+              <AlertCircle className="w-4 h-4 shrink-0 text-[#173F3D]" />
               <span>Select files from the Sources panel to unlock assessment generation.</span>
             </div>
           )}
@@ -122,10 +118,10 @@ export default function AIStudio({
 
         {/* Difficulty Selection */}
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-2">
+          <label className="block text-xs font-bold text-[#1C1917] mb-2">
             Assessment Difficulty
           </label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#FAF7F2] rounded-xl border border-[#E6DFD3] text-xs">
             {difficultyLevels.map((lvl) => {
               const isActive = difficulty === lvl.id;
               return (
@@ -133,10 +129,10 @@ export default function AIStudio({
                   key={lvl.id}
                   type="button"
                   onClick={() => setDifficulty(lvl.id)}
-                  className={`px-3 py-2 text-xs font-medium rounded-xl border transition-all text-center flex items-center justify-center gap-1.5 ${
+                  className={`py-1.5 text-xs font-semibold rounded-lg transition-all text-center cursor-pointer ${
                     isActive
-                      ? `${lvl.color} ring-1 ring-white/20 shadow-sm font-semibold`
-                      : 'border-slate-800 bg-dark-950 text-slate-400 hover:bg-dark-850 hover:text-slate-200'
+                      ? 'bg-[#173F3D] text-white shadow-2xs'
+                      : 'text-[#1C1917] hover:bg-white/80'
                   }`}
                 >
                   <span>{lvl.label}</span>
@@ -146,14 +142,14 @@ export default function AIStudio({
           </div>
         </div>
 
-        {/* Question Count Slider */}
+        {/* Question Count Slider matching mockup */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-semibold text-slate-300">
+            <label className="text-xs font-bold text-[#1C1917]">
               Number of Questions
             </label>
-            <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-brand-500/10 text-brand-300 border border-brand-500/20">
-              {questionCount} Questions
+            <span className="text-xs font-bold text-[#173F3D]">
+              {questionCount} Qs
             </span>
           </div>
           <input
@@ -162,116 +158,102 @@ export default function AIStudio({
             max="30"
             value={questionCount}
             onChange={(e) => setQuestionCount(Number(e.target.value))}
-            className="w-full accent-brand-500 bg-dark-950 h-2 rounded-lg cursor-pointer"
+            className="w-full accent-[#173F3D] bg-[#E6DFD3] h-1.5 rounded-lg cursor-pointer"
           />
-          <div className="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
-            <span>1 Q</span>
+          <div className="flex justify-between text-[10px] text-[#78716C] mt-1 font-medium">
+            <span>10 s</span>
             <span>10 Qs</span>
             <span>20 Qs</span>
-            <span>30 Qs</span>
+            <span>10 Qs</span>
           </div>
         </div>
 
-        {/* Generate Button */}
+        {/* Generate Button (Solid Deep Forest Teal matching mockup) */}
         <button
           type="button"
           onClick={handleGenerate}
           disabled={generating || (currentUser && selectedSources.length === 0)}
-          className={`w-full py-3 px-4 rounded-xl font-medium text-xs text-white transition-all flex items-center justify-center gap-2 shadow-lg ${
+          className={`w-full py-3 px-4 rounded-xl font-bold text-xs text-white transition-all flex items-center justify-center gap-2 shadow-sm ${
             !currentUser
-              ? 'bg-gradient-to-r from-brand-600 via-indigo-600 to-rose-600 hover:from-brand-500 hover:via-indigo-500 hover:to-rose-500 shadow-brand-500/25 glow-brand cursor-pointer'
+              ? 'bg-[#173F3D] hover:bg-[#102B2A] cursor-pointer'
               : selectedSources.length === 0
-              ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/40'
+              ? 'bg-[#DCD2C0] text-[#78716C] cursor-not-allowed'
               : generating
-              ? 'bg-gradient-to-r from-brand-700 to-indigo-800 opacity-90 cursor-wait'
-              : 'bg-gradient-to-r from-brand-600 via-indigo-600 to-rose-600 hover:from-brand-500 hover:via-indigo-500 hover:to-rose-500 shadow-brand-500/25 glow-brand'
+              ? 'bg-[#173F3D] opacity-90 cursor-wait'
+              : 'bg-[#173F3D] hover:bg-[#102B2A] cursor-pointer'
           }`}
         >
           {!currentUser ? (
             <>
-              <Lock className="w-4 h-4 text-amber-300" />
+              <Lock className="w-4 h-4 text-[#FAF7F2]" />
               <span>Generate CBT Assessment (Sign In Required)</span>
             </>
           ) : generating ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin text-white" />
-              <span>Gemini 2.5 is authoring paper...</span>
+              <span>Generating...</span>
             </>
           ) : (
             <>
-              <Sparkles className="w-4 h-4 text-amber-300" />
+              <Sparkles className="w-4 h-4 text-[#FAF7F2]" />
               <span>Generate CBT Assessment</span>
             </>
           )}
         </button>
 
-        {/* Recent Outputs (Interactive Buttons) */}
-        <div className="pt-2 border-t border-slate-800">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-slate-400" />
-              Recent Outputs
+        {/* Recent Outputs */}
+        <div className="pt-3 border-t border-[#E6DFD3]">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-bold text-[#1C1917] uppercase tracking-wider flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-[#173F3D]" />
+              RECENT OUTPUTS
             </h3>
-            <span className="text-[10px] text-slate-500 font-mono">
+            <span className="text-[10px] text-[#78716C] font-mono">
               {recentQuizzes.length} available
             </span>
           </div>
 
           {recentQuizzes.length === 0 ? (
-            <div className="p-4 rounded-xl bg-dark-950/40 border border-slate-800/80 text-center text-slate-500 text-xs">
+            <div className="py-6 text-center text-[#78716C] text-xs">
               No tests generated yet. Click "Generate CBT Assessment" above.
             </div>
           ) : (
-            <div className="space-y-2.5">
+            <div className="space-y-1.5">
               {recentQuizzes.map((quiz, idx) => (
                 <div
                   key={quiz.generatedAt || idx}
-                  className="group relative p-3 rounded-xl bg-dark-950 border border-slate-800/90 hover:border-brand-500/50 hover:bg-dark-850 transition-all flex flex-col gap-2"
+                  className="group p-2.5 rounded-xl bg-[#FAF7F2] hover:bg-[#F2EAE0] border border-[#E6DFD3] transition-colors flex items-center justify-between gap-3 shadow-2xs"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h4 className="text-xs font-semibold text-slate-200 group-hover:text-white line-clamp-1">
-                        {quiz.quizTitle || 'Generated Practice Paper'}
-                      </h4>
-                      <div className="flex items-center gap-1.5 mt-1 text-[10px]">
-                        <span
-                          className={`font-semibold px-1.5 py-0.2 rounded border ${
-                            quiz.difficulty === 'Hard'
-                              ? 'text-amber-400 border-amber-500/30 bg-amber-500/10'
-                              : quiz.difficulty === 'Easy'
-                              ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10'
-                              : 'text-brand-400 border-brand-500/30 bg-brand-500/10'
-                          }`}
-                        >
-                          {quiz.difficulty || 'Custom'}
-                        </span>
-                        <span className="text-slate-500">•</span>
-                        <span className="text-slate-400 font-mono">
-                          {quiz.questions?.length || quiz.totalQuestions || 0} Questions
-                        </span>
-                      </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-xs font-bold text-[#1C1917] truncate">
+                      {quiz.quizTitle || 'Generated Practice Paper'}
+                    </h4>
+                    <div className="flex items-center gap-2 mt-0.5 text-[10px] text-[#78716C]">
+                      <span className="text-[#173F3D] font-semibold">{quiz.difficulty || 'Custom'}</span>
+                      <span>•</span>
+                      <span>{quiz.questions?.length || quiz.totalQuestions || 0} Qs</span>
                     </div>
+                  </div>
 
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => onLaunchExam(quiz)}
+                      className="px-3 py-1 bg-[#173F3D] hover:bg-[#102B2A] text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                      title="Launch exam"
+                    >
+                      <Play className="w-3 h-3 fill-current" />
+                      <span>Start</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => onDeleteRecentQuiz(idx)}
-                      className="p-1 text-slate-500 hover:text-rose-400 rounded transition-colors"
-                      title="Remove from recent outputs"
+                      className="p-1 text-[#78716C] hover:text-rose-500 rounded transition-colors cursor-pointer"
+                      title="Remove"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
-
-                  {/* Launch Exam Button */}
-                  <button
-                    type="button"
-                    onClick={() => onLaunchExam(quiz)}
-                    className="w-full py-1.5 px-3 bg-brand-600/20 hover:bg-brand-600 text-brand-300 hover:text-white border border-brand-500/40 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all shadow-sm"
-                  >
-                    <Play className="w-3.5 h-3.5 fill-current" />
-                    <span>Launch CBT Exam Portal</span>
-                    <ExternalLink className="w-3 h-3 ml-auto opacity-70" />
-                  </button>
                 </div>
               ))}
             </div>

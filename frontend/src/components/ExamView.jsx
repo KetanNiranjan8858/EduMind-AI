@@ -13,21 +13,21 @@ import {
   HelpCircle,
   Award
 } from 'lucide-react';
-import { getSafeOptions, formatTime } from '../utils/helpers';
+import { getSafeOptions, formatTime, cleanQuestionStatement } from '../utils/helpers';
 
 export default function ExamView({ quiz, onSubmitExam, onExit }) {
   if (!quiz || !quiz.questions || quiz.questions.length === 0) {
     return (
-      <div className="min-h-screen bg-dark-950 flex items-center justify-center p-6 text-center">
-        <div className="bg-dark-900 border border-slate-800 p-8 rounded-2xl max-w-md">
-          <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
-          <h2 className="text-lg font-bold text-slate-100 mb-2">No Active Exam Data</h2>
-          <p className="text-xs text-slate-400 mb-6">
+      <div className="min-h-screen bg-[#F4EFE6] flex items-center justify-center p-6 text-center font-sans">
+        <div className="bg-white border border-[#E6DFD3] p-8 rounded-2xl max-w-md shadow-sm">
+          <AlertCircle className="w-12 h-12 text-[#173F3D] mx-auto mb-4" />
+          <h2 className="text-lg font-bold text-[#1C1917] mb-2">No Active Exam Data</h2>
+          <p className="text-xs text-[#78716C] mb-6 leading-relaxed">
             The exam session could not be located in local storage. Please return to the AI Studio and launch a generated paper.
           </p>
           <button
             onClick={onExit}
-            className="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded-xl transition-colors"
+            className="px-4 py-2 bg-[#173F3D] hover:bg-[#102B2A] text-white text-xs font-semibold rounded-xl transition-colors shadow-sm"
           >
             Return to Dashboard
           </button>
@@ -205,13 +205,13 @@ export default function ExamView({ quiz, onSubmitExam, onExit }) {
       <header className="h-16 bg-dark-900 border-b border-slate-800 px-6 flex items-center justify-between shrink-0 shadow-md">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="p-2 bg-brand-500/10 text-brand-400 rounded-lg border border-brand-500/20">
-              <Award className="w-5 h-5" />
+            <div className="p-2 duo-gradient text-white rounded-lg shadow-sm shadow-indigo-500/20">
+              <Award className="w-5 h-5 text-cyan-200" />
             </div>
             <div>
               <h1 className="text-sm font-bold tracking-wide uppercase text-slate-100 flex items-center gap-2">
                 <span>{quiz.quizTitle || 'CBT Examination Portal'}</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-brand-500/20 text-brand-300 border border-brand-500/40">
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-indigo-500/15 text-cyan-300 border border-cyan-500/30">
                   {quiz.difficulty || 'Medium'}
                 </span>
               </h1>
@@ -239,7 +239,7 @@ export default function ExamView({ quiz, onSubmitExam, onExit }) {
 
           <button
             onClick={() => setShowSubmitModal(true)}
-            className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-semibold rounded-xl flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition-all"
+            className="px-5 py-2.5 duo-gradient duo-gradient-hover text-white text-xs font-semibold rounded-xl flex items-center gap-2 shadow-lg shadow-indigo-500/20 transition-all cursor-pointer"
           >
             <Send className="w-4 h-4" />
             <span>Submit Exam</span>
@@ -276,43 +276,43 @@ export default function ExamView({ quiz, onSubmitExam, onExit }) {
             </div>
           </div>
 
-          {/* Question Statement & Options */}
-          <div className="flex-1 p-8 max-w-4xl space-y-6">
+          {/* Question Statement & Options (Seamless, Frameless Layout) */}
+          <div className="flex-1 p-8 max-w-3xl space-y-6">
             {/* Question Text */}
-            <div className="p-6 rounded-2xl bg-dark-900/80 border border-slate-800/90 shadow-sm">
+            <div className="py-2">
               <p className="text-sm sm:text-base text-slate-100 font-medium leading-relaxed font-sans whitespace-pre-wrap">
-                {activeQuestion.question}
+                {cleanQuestionStatement(activeQuestion.question, quiz?.sourceFiles)}
               </p>
             </div>
 
-            {/* Options List */}
-            <div className="space-y-3 pt-2">
+            {/* Options List (Clean, Boxless Choices) */}
+            <div className="space-y-1.5 pt-1">
               {safeOptions.map((opt) => {
                 const isSelected = userAnswers[activeQuestionId] === opt.key;
                 return (
                   <div
                     key={opt.key}
                     onClick={() => handleSelectOption(opt.key)}
-                    className={`flex items-start gap-3.5 p-4 rounded-xl border transition-all cursor-pointer ${
+                    className={`flex items-start gap-3 py-2.5 px-3 rounded-xl transition-colors cursor-pointer select-none ${
                       isSelected
-                        ? 'bg-brand-500/15 border-brand-500 text-white ring-1 ring-brand-500/50 shadow-md shadow-brand-500/10'
-                        : 'bg-dark-900/50 border-slate-800/80 hover:bg-dark-850 hover:border-slate-700 text-slate-300'
+                        ? 'bg-indigo-500/15 text-white font-medium'
+                        : 'hover:bg-slate-800/50 text-slate-300'
                     }`}
                   >
-                    {/* Radio Button */}
+                    {/* Radio Indicator */}
                     <div
-                      className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
                         isSelected
-                          ? 'border-brand-400 bg-brand-500 text-white'
-                          : 'border-slate-600 bg-dark-950'
+                          ? 'border-cyan-400 bg-cyan-500 text-white'
+                          : 'border-slate-600 bg-transparent'
                       }`}
                     >
-                      {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                      {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                     </div>
 
                     {/* Option Text */}
                     <div className="flex-1 text-xs sm:text-sm leading-relaxed">
-                      <span className="font-bold mr-2 text-brand-400 font-mono">
+                      <span className={`font-bold mr-2 font-mono ${isSelected ? 'text-cyan-400' : 'text-slate-400'}`}>
                         {opt.key}.
                       </span>
                       <span>{opt.text}</span>
@@ -330,7 +330,7 @@ export default function ExamView({ quiz, onSubmitExam, onExit }) {
                 type="button"
                 onClick={handleClearResponse}
                 disabled={userAnswers[activeQuestionId] === undefined}
-                className="px-3.5 py-2 text-xs font-medium text-slate-300 hover:text-white bg-dark-850 hover:bg-slate-800 disabled:opacity-30 rounded-xl border border-slate-700/60 flex items-center gap-1.5 transition-colors"
+                className="px-3.5 py-2 text-xs font-medium text-slate-300 hover:text-white bg-dark-850 hover:bg-slate-800 disabled:opacity-30 rounded-xl border border-slate-700/60 flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
                 <span>Clear Response</span>
@@ -339,9 +339,9 @@ export default function ExamView({ quiz, onSubmitExam, onExit }) {
               <button
                 type="button"
                 onClick={handleMarkForReviewAndNext}
-                className="px-4 py-2 text-xs font-semibold text-blue-300 hover:text-white bg-blue-500/15 hover:bg-blue-600 rounded-xl border border-blue-500/30 flex items-center gap-1.5 transition-all shadow-sm"
+                className="px-4 py-2 text-xs font-semibold text-cyan-300 hover:text-white bg-indigo-500/15 hover:bg-indigo-600 rounded-xl border border-indigo-500/30 hover:border-cyan-400/50 flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
               >
-                <Bookmark className="w-3.5 h-3.5" />
+                <Bookmark className="w-3.5 h-3.5 text-cyan-400" />
                 <span>Mark for Review & Next</span>
               </button>
             </div>
@@ -351,7 +351,7 @@ export default function ExamView({ quiz, onSubmitExam, onExit }) {
                 type="button"
                 onClick={() => goToQuestion(currentIndex - 1)}
                 disabled={currentIndex === 0}
-                className="px-4 py-2 text-xs font-medium text-slate-300 hover:text-white bg-dark-850 hover:bg-slate-800 disabled:opacity-30 rounded-xl border border-slate-700/60 flex items-center gap-1 transition-colors"
+                className="px-4 py-2 text-xs font-medium text-slate-300 hover:text-white bg-dark-850 hover:bg-slate-800 disabled:opacity-30 rounded-xl border border-slate-700/60 flex items-center gap-1 transition-colors cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
                 <span>Previous</span>
@@ -360,7 +360,7 @@ export default function ExamView({ quiz, onSubmitExam, onExit }) {
               <button
                 type="button"
                 onClick={handleSaveAndNext}
-                className="px-5 py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-500 rounded-xl flex items-center gap-1 shadow-md shadow-brand-500/20 transition-all"
+                className="px-5 py-2 text-xs font-semibold text-white duo-gradient duo-gradient-hover rounded-xl flex items-center gap-1 shadow-md shadow-indigo-500/20 transition-all cursor-pointer"
               >
                 <span>Save & Next</span>
                 <ChevronRight className="w-4 h-4" />
@@ -389,28 +389,28 @@ export default function ExamView({ quiz, onSubmitExam, onExit }) {
             </h4>
             <div className="grid grid-cols-2 gap-2 text-[11px]">
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-md bg-emerald-600 text-white font-bold flex items-center justify-center text-[10px]">
+                <span className="w-6 h-6 rounded-md bg-cyan-600 text-white font-bold flex items-center justify-center text-[10px] shadow-sm shadow-cyan-600/20">
                   {statusCounts.answered}
                 </span>
                 <span className="text-slate-300">Answered</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-md bg-rose-600 text-white font-bold flex items-center justify-center text-[10px]">
-                  {statusCounts.not_answered}
-                </span>
-                <span className="text-slate-300">Not Answered</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-md bg-blue-600 text-white font-bold flex items-center justify-center text-[10px]">
+                <span className="w-6 h-6 rounded-md bg-indigo-600 text-white font-bold flex items-center justify-center text-[10px] shadow-sm shadow-indigo-600/20">
                   {statusCounts.marked}
                 </span>
                 <span className="text-slate-300">Marked for Review</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-md bg-slate-700 text-slate-300 font-bold flex items-center justify-center text-[10px]">
+                <span className="w-6 h-6 rounded-md bg-slate-700 text-slate-200 font-bold flex items-center justify-center text-[10px]">
+                  {statusCounts.not_answered}
+                </span>
+                <span className="text-slate-300">Not Answered</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-md bg-dark-950 text-slate-500 border border-slate-800 font-bold flex items-center justify-center text-[10px]">
                   {statusCounts.not_visited}
                 </span>
-                <span className="text-slate-300">Not Visited</span>
+                <span className="text-slate-400">Not Visited</span>
               </div>
             </div>
           </div>
@@ -426,15 +426,15 @@ export default function ExamView({ quiz, onSubmitExam, onExit }) {
                 const status = questionStatus[qId] || 'not_visited';
                 const isCurrent = idx === currentIndex;
 
-                let colorClass = 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500';
+                let colorClass = 'bg-dark-950 text-slate-400 border-slate-800 hover:border-slate-700';
                 if (status === 'answered') {
-                  colorClass = 'bg-emerald-600 text-white border-emerald-500 shadow-sm';
-                } else if (status === 'not_answered') {
-                  colorClass = 'bg-rose-600 text-white border-rose-500 shadow-sm';
+                  colorClass = 'bg-cyan-600 text-white border-cyan-500 shadow-sm shadow-cyan-600/20';
                 } else if (status === 'marked') {
-                  colorClass = 'bg-blue-600 text-white border-blue-500 shadow-sm';
+                  colorClass = 'bg-indigo-600 text-white border-indigo-500 shadow-sm shadow-indigo-600/20';
+                } else if (status === 'not_answered') {
+                  colorClass = 'bg-slate-700 text-slate-200 border-slate-600 shadow-sm';
                 } else if (status === 'not_visited') {
-                  colorClass = 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-750';
+                  colorClass = 'bg-dark-950 text-slate-500 border-slate-800 hover:bg-dark-850';
                 }
 
                 return (
@@ -442,8 +442,8 @@ export default function ExamView({ quiz, onSubmitExam, onExit }) {
                     key={qId}
                     type="button"
                     onClick={() => goToQuestion(idx)}
-                    className={`h-9 rounded-lg font-mono text-xs font-bold border transition-all flex items-center justify-center relative ${colorClass} ${
-                      isCurrent ? 'ring-2 ring-white ring-offset-2 ring-offset-dark-900 scale-105' : ''
+                    className={`h-9 rounded-lg font-mono text-xs font-bold border transition-all flex items-center justify-center relative cursor-pointer ${colorClass} ${
+                      isCurrent ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-dark-900 scale-105' : ''
                     }`}
                   >
                     {idx + 1}

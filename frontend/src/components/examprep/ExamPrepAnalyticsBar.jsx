@@ -37,22 +37,15 @@ export default function ExamPrepAnalyticsBar({
           <div className="flex items-center gap-2.5 flex-wrap">
             <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
               <Layers className="w-4 h-4 text-rose-400" />
-              Exam Track:
+              Exam:
             </span>
-            <div className="relative">
-              <select
-                value={selectedExamId}
-                onChange={(e) => onSelectExamId(e.target.value)}
-                className="pl-3.5 pr-8 py-1.5 bg-dark-950 hover:bg-dark-850 border border-rose-500/40 rounded-xl text-xs font-bold text-rose-200 focus:outline-none focus:border-rose-400 appearance-none cursor-pointer transition-colors shadow-sm"
-              >
-                {availableExams.map((exam) => (
-                  <option key={exam.id} value={exam.id} className="bg-dark-900 text-slate-200">
-                    {exam.title}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-rose-300 absolute right-2.5 top-2.5 pointer-events-none" />
+            <div className="flex items-center gap-2 px-3.5 py-1.5 bg-dark-950 border border-rose-500/40 rounded-xl text-xs font-bold text-rose-200 shadow-sm">
+              <span>GATE Computer Science & Information Technology (CS/IT)</span>
             </div>
+
+            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-800/80 text-slate-300 border border-slate-700/60 font-medium">
+              10 Official Subjects • Full GATE CS/IT Syllabus
+            </span>
           </div>
 
           {/* Performance Summary Pill + Detailed Subject Analytics Button */}
@@ -119,7 +112,7 @@ export default function ExamPrepAnalyticsBar({
             </div>
           </div>
 
-          {/* Metric 2: Accuracy */}
+          {/* Metric 2: Accuracy with Correct vs Incorrect */}
           <div className="p-3.5 rounded-2xl bg-dark-950 border border-slate-800/90 shadow-sm flex flex-col justify-between group hover:border-slate-700 transition-colors">
             <div>
               <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
@@ -134,25 +127,21 @@ export default function ExamPrepAnalyticsBar({
                   {accuracy >= 75
                     ? 'Excellent'
                     : accuracy >= 50
-                    ? 'Proficient'
-                    : totalAttempted > 0
-                    ? 'Needs Practice'
-                    : 'Untested'}
+                      ? 'Proficient'
+                      : totalAttempted > 0
+                        ? 'Needs Practice'
+                        : 'Untested'}
                 </span>
               </div>
             </div>
 
-            <div className="mt-2.5 space-y-1">
-              <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, accuracy)}%` }}
-                />
-              </div>
-              <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                <span>Target</span>
-                <span>{accuracy >= 75 ? 'Optimal' : totalAttempted > 0 ? '>75% goal' : 'Untested'}</span>
-              </div>
+            <div className="mt-2.5 flex items-center gap-1.5 text-[10px] font-mono">
+              <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
+                ✓ {totalCorrect} Correct
+              </span>
+              <span className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 font-semibold">
+                ✗ {totalIncorrect} Incorrect
+              </span>
             </div>
           </div>
 
@@ -204,10 +193,10 @@ export default function ExamPrepAnalyticsBar({
                 {avgTimePerQuestion === 0
                   ? 'No pace data'
                   : avgTimePerQuestion <= 90
-                  ? '⚡ Fast Pace'
-                  : avgTimePerQuestion <= 150
-                  ? '⏱️ Standard Pace'
-                  : '🐢 In-Depth Pace'}
+                    ? '⚡ Fast Pace'
+                    : avgTimePerQuestion <= 150
+                      ? '⏱️ Standard Pace'
+                      : '🐢 In-Depth Pace'}
               </span>
               <span className="text-slate-500">Target: &lt;180s</span>
             </div>

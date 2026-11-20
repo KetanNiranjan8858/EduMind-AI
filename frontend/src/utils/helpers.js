@@ -1,4 +1,48 @@
 /**
+ * Clean question statement by strictly stripping file names, document titles,
+ * and prefixes like "Based on...", "According to...", "[Medium]", etc.
+ */
+export function cleanQuestionStatement(questionText, sourceFiles = []) {
+  if (!questionText || typeof questionText !== 'string') return '';
+  let clean = questionText.trim();
+
+  // Strip leading [Easy] / [Medium] / [Hard]
+  clean = clean.replace(/^\[(Easy|Medium|Hard|Assessment|Gate)\]\s*/i, '');
+
+  // Strip patterns like:
+  // "Based on the source material '...':"
+  // "Based on the uploaded documents:"
+  // "Based on the provided document '...':"
+  // "According to the uploaded files '...':"
+  clean = clean.replace(/^Based on (the )?(source material|uploaded documents?|documents?|notes?|source|sources|text)[^:?\n]*[:,-]\s*/i, '');
+  clean = clean.replace(/^(According to|In the document|In the file|In)\s+["']?[^:?\n]+["']?[:,-]\s*/i, '');
+
+  // Strip explicit file names if passed in sourceFiles
+  if (Array.isArray(sourceFiles)) {
+    for (const sf of sourceFiles) {
+      if (!sf || typeof sf !== 'string') continue;
+      const base = sf.replace(/\.[^/.]+$/, '');
+      const escapedSf = sf.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escapedBase = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      clean = clean.replace(new RegExp(`^.*?(${escapedSf}|${escapedBase})["']?\\s*[:,-]?\\s*`, 'i'), '');
+    }
+  }
+
+  // Strip generic extensions like file.pdf, file.docx
+  clean = clean.replace(/^.*?[\w,\s-]+\.(pdf|docx|txt|md|pptx)["']?\s*[:,-]?\s*/i, '');
+
+  // Clean template prefix if present
+  clean = clean.replace(/^Regarding\s+["']?[^:?\n]+["']?,\s*which\s+/i, 'Which ');
+
+  // Capitalize first letter
+  if (clean.length > 0) {
+    clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+  }
+
+  return clean || questionText;
+}
+
+/**
  * Crash Prevention (Fault Tolerance): Safely extract and normalize options
  * from varied LLM output shapes (Array of strings, Object map, Array of objects, or raw string)
  */
@@ -131,7 +175,7 @@ export function calculateScore(questions = [], userAnswers = {}, questionTimes =
     return {
       questionId: qId,
       questionNumber: index + 1,
-      questionText: q.question,
+      questionText: cleanQuestionStatement(q.question),
       options: safeOpts,
       userAnswer: userAnswerKey || null,
       correctAnswer: correctLetter,
