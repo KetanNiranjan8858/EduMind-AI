@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { Sparkles, X, Play, Clock, BookOpen, CheckCircle2, ShieldCheck, Layers, Loader2 } from 'lucide-react';
+import {
+  Sparkles,
+  X,
+  Play,
+  Clock,
+  Layers,
+  Flame,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  BookOpen
+} from 'lucide-react';
 import { generateExamPrepTest } from '../../utils/api';
 
 export default function GenerateExamModal({
@@ -7,110 +18,137 @@ export default function GenerateExamModal({
   onClose,
   selectedSubjectIds = ['all'],
   isAllSelected = true,
-  questionsPool = [],
   subjects = [],
-  filteredExams = [],
-  allExams = [],
+  questionsPool = [],
+  onTestGenerated,
   onLaunchExam
 }) {
   if (!isOpen) return null;
 
+  // Form State
+  const [difficulty, setDifficulty] = useState('Hard'); // 'Hard' | 'Medium' | 'Easy'
+  const [questionCount, setQuestionCount] = useState(10);
+  const [syllabusScope, setSyllabusScope] = useState(isAllSelected ? 'all' : 'selected'); // 'all' | 'selected'
   const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Extract all questions in pool
-  const allAvailableQuestions = questionsPool.length > 0
-    ? questionsPool
-    : (filteredExams.length > 0 ? filteredExams : allExams).flatMap((e) =>
-      (e.questions || []).map((q) => ({
-        ...q,
-        subjectName: e.subject
-      }))
-    );
+  const difficultyLevels = [
+    { id: 'Hard', label: 'Hard', desc: 'GATE CS benchmark standard', recommended: true },
+    { id: 'Medium', label: 'Medium', desc: 'Standard concept verification', recommended: false },
+    { id: 'Easy', label: 'Easy', desc: 'Foundational review', recommended: false }
+  ];
 
-  const maxQuestions = Math.max(1, allAvailableQuestions.length);
+  const questionCountOptions = [
+    { count: 5, label: '5 Questions', time: 15, desc: 'Quick concept drill' },
+    { count: 10, label: '10 Questions', time: 25, desc: 'Sectional practice (Recommended)' },
+    { count: 15, label: '15 Questions', time: 40, desc: 'Comprehensive practice' },
+    { count: 25, label: '25 Questions', time: 65, desc: 'Full sectional mock' },
+    { count: 65, label: '65 Questions', time: 180, desc: 'Official GATE simulation' }
+  ];
 
-  // Preset Configurations
-  const presets = [
-    { count: 10, time: 25, label: '10 Questions', desc: 'Rapid assessment' },
-    { count: 20, time: 50, label: '20 Questions', desc: 'Standard sectional mock' },
-    { count: 30, time: 75, label: '30 Questions', desc: 'Half-length benchmark' },
-    { count: 65, time: 180, label: '65 Questions', desc: 'Official GATE simulation' },
-    { count: Math.min(100, maxQuestions), time: 180, label: `${Math.min(100, maxQuestions)} Questions`, desc: 'Full pool comprehensive' }
-  ].filter((p) => p.count <= maxQuestions);
+  const activeCountOption = questionCountOptions.find((o) => o.count === questionCount) || questionCountOptions[1];
+  const timeLimitMinutes = activeCountOption.time;
 
-  const [selectedPresetIndex, setSelectedPresetIndex] = useState(
-    presets.findIndex((p) => p.count === 20) >= 0 ? presets.findIndex((p) => p.count === 20) : 0
-  );
+  // Active Subject Scope Description
+  const activeSubjectNames = React.useMemo(() => {
+    if (syllabusScope === 'all') return 'Full GATE CS/IT Syllabus';
+    const names = subjects
+      .filter((s) => selectedSubjectIds.includes(s.id))
+      .map((s) => s.name);
+    if (names.length === 1) return names[0];
+    if (names.length > 1) return `${names.length} Selected Subjects`;
+    return 'Full GATE CS/IT Syllabus';
+  }, [syllabusScope, selectedSubjectIds, subjects]);
 
-  const activePreset = presets[selectedPresetIndex] || presets[0] || { count: 10, time: 25 };
-
-  async function handleGenerateAndAttempt() {
+  async function handleGenerate(andLaunch = false) {
+    if (generating) return;
     setGenerating(true);
+    setError(null);
+
+    const targetSubjectIds = syllabusScope === 'all'
+      ? ['all']
+      : selectedSubjectIds.length > 0 ? selectedSubjectIds : ['all'];
+
     try {
       const res = await generateExamPrepTest({
-        subjectIds: isAllSelected ? ['all'] : selectedSubjectIds,
-        questionCount: activePreset.count,
-        timeLimitMinutes: activePreset.time,
-        difficulty: 'Hard'
+        examId: 'gate_cs',
+        subjectIds: targetSubjectIds,
+        difficulty,
+        questionCount,
+        timeLimitMinutes
       });
-      if (res.quiz) {
-        setGenerating(false);
+
+      if (res.success && res.quiz) {
+        if (onTestGenerated) {
+          onTestGenerated(res.quiz);
+        }
         onClose();
-        onLaunchExam(res.quiz);
+        if (andLaunch && onLaunchExam) {
+          onLaunchExam(res.quiz);
+        }
         return;
       }
     } catch (err) {
-      console.warn('[GenerateExamModal] API generation failed, falling back to local pool:', err.message);
+      console.warn('API test generation fallback:', err.message);
     } finally {
       setGenerating(false);
     }
 
-    // Fallback using loaded questionsPool
-    const shuffledPool = [...allAvailableQuestions].sort(() => 0.5 - Math.random());
-    const pickedQuestions = shuffledPool.slice(0, activePreset.count).map((q, idx) => ({
+    // Direct fallback from questionsPool
+    let pool = [...(questionsPool || [])];
+    if (difficulty !== 'all') {
+      const diffPool = pool.filter((q) => (q.difficulty || '').toLowerCase() === difficulty.toLowerCase());
+      if (diffPool.length > 0) pool = diffPool;
+    }
+
+    const shuffled = [...pool].sort(() => 0.5 - Math.random());
+    const picked = shuffled.slice(0, questionCount).map((q, idx) => ({
       ...q,
       id: idx + 1
     }));
 
-    const subjectNames = Array.from(new Set(pickedQuestions.map((q) => q.subjectName || q.subject_name))).filter(Boolean);
-    const title =
-      isAllSelected || subjectNames.length > 3
-        ? `GATE CS/IT: Generated Mock Assessment (${activePreset.count} Qs)`
-        : `GATE CS: ${subjectNames.join(', ')} (${activePreset.count} Qs)`;
-
-    const generatedQuiz = {
-      id: `generated_gate_${Date.now()}`,
+    const quiz = {
+      id: `test_${Date.now()}`,
+      exam_id: 'gate_cs',
       track: 'gate_cs',
-      subject: isAllSelected ? 'GATE CS/IT Full Syllabus' : subjectNames.join(', '),
-      quizTitle: title,
-      difficulty: 'Hard',
-      totalQuestions: pickedQuestions.length,
-      timeLimitMinutes: activePreset.time,
-      description: `Official benchmark assessment generated from database across ${subjectNames.length} GATE CS/IT subjects. Timed under official CBT conditions.`,
-      topics: Array.from(new Set(pickedQuestions.map((q) => q.topic))).filter(Boolean).slice(0, 8),
-      questions: pickedQuestions,
-      generatedAt: Date.now()
+      title: `GATE CS: ${activeSubjectNames} (${picked.length} Qs)`,
+      quizTitle: `GATE CS: ${activeSubjectNames} (${picked.length} Qs)`,
+      subject: activeSubjectNames,
+      subject_ids: targetSubjectIds.join(','),
+      difficulty,
+      total_questions: picked.length,
+      totalQuestions: picked.length,
+      time_limit_minutes: timeLimitMinutes,
+      timeLimitMinutes,
+      description: `Benchmark test generated from official question bank.`,
+      topics: [],
+      questions: picked
     };
 
+    if (onTestGenerated) {
+      onTestGenerated(quiz);
+    }
     onClose();
-    onLaunchExam(generatedQuiz);
+    if (andLaunch && onLaunchExam) {
+      onLaunchExam(quiz);
+    }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-dark-900 border border-slate-800 rounded-3xl w-full max-w-xl flex flex-col shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-dark-850/80">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="bg-white border border-[#E6DFD3] rounded-3xl w-full max-w-xl flex flex-col shadow-2xl overflow-hidden font-sans">
+        {/* Modal Header */}
+        <div className="p-5 border-b border-[#E6DFD3] bg-[#FAF7F2] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-tr from-rose-600 via-purple-600 to-brand-600 rounded-xl text-white shadow-md shadow-rose-600/20">
-              <Sparkles className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-[#173F3D] text-white flex items-center justify-center shadow-xs">
+              <Sparkles className="w-5 h-5 text-[#FAF7F2]" />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-white">
-                Generate Exam for Attempt
+              <h3 className="text-base font-extrabold text-[#1C1917] tracking-tight">
+                Generate Question Test
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Custom CBT simulation from official GATE CS/IT subjects
+              <p className="text-xs text-[#78716C] mt-0.5">
+                Pick questions from the Admin Database to generate a benchmark mock test.
               </p>
             </div>
           </div>
@@ -118,114 +156,187 @@ export default function GenerateExamModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
-            title="Close"
+            className="p-2 text-[#78716C] hover:text-[#1C1917] hover:bg-white rounded-xl transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Modal Body */}
+        {/* Modal Form Body */}
         <div className="p-6 space-y-5 overflow-y-auto max-h-[75vh]">
-          {/* Included Subjects Tags */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-rose-400" />
-                Subjects Included ({poolExams.length}):
-              </span>
-              <span className="text-[11px] font-mono text-slate-400">
-                {allAvailableQuestions.length} Total Questions in Pool
-              </span>
+          {error && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+              <span>{error}</span>
             </div>
+          )}
 
-            <div className="flex items-center gap-1.5 flex-wrap p-2.5 rounded-xl bg-dark-950 border border-slate-800/80 max-h-24 overflow-y-auto">
-              {poolExams.map((e) => (
-                <span
-                  key={e.id}
-                  className="text-[10px] font-mono px-2 py-0.5 rounded bg-dark-900 text-rose-300 border border-rose-500/30"
-                >
-                  {e.subject}
-                </span>
-              ))}
+          {/* 1. Syllabus Scope */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-[#1C1917] flex items-center gap-1.5 uppercase tracking-wider">
+              <Layers className="w-3.5 h-3.5 text-[#173F3D]" />
+              Syllabus Scope
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setSyllabusScope('selected')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  syllabusScope === 'selected'
+                    ? 'bg-[#173F3D] text-white border-[#173F3D] shadow-xs'
+                    : 'bg-[#FAF7F2] border-[#E6DFD3] text-[#1C1917] hover:bg-[#F2EAE0]'
+                }`}
+              >
+                <div className="text-xs font-bold truncate">Selected Subject(s)</div>
+                <div className={`text-[10px] mt-0.5 truncate ${syllabusScope === 'selected' ? 'text-[#FAF7F2]' : 'text-[#78716C]'}`}>
+                  {activeSubjectNames}
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSyllabusScope('all')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  syllabusScope === 'all'
+                    ? 'bg-[#173F3D] text-white border-[#173F3D] shadow-xs'
+                    : 'bg-[#FAF7F2] border-[#E6DFD3] text-[#1C1917] hover:bg-[#F2EAE0]'
+                }`}
+              >
+                <div className="text-xs font-bold">All 10 GATE Subjects</div>
+                <div className={`text-[10px] mt-0.5 ${syllabusScope === 'all' ? 'text-[#FAF7F2]' : 'text-[#78716C]'}`}>
+                  Full syllabus benchmark
+                </div>
+              </button>
             </div>
           </div>
 
-          {/* Test Format Presets */}
-          <div className="space-y-2.5">
-            <span className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
-              Choose Test Length & Timer:
-            </span>
+          {/* 2. Question Difficulty (Crucial: "ask for question and difficulty") */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-[#1C1917] flex items-center gap-1.5 uppercase tracking-wider">
+                <Flame className="w-3.5 h-3.5 text-[#173F3D]" />
+                Select Difficulty Level
+              </label>
+              <span className="text-[10px] text-[#173F3D] font-bold">
+                Target: {difficulty}
+              </span>
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {presets.map((preset, idx) => {
-                const isSelected = selectedPresetIndex === idx;
+            <div className="grid grid-cols-3 gap-2">
+              {difficultyLevels.map((lvl) => {
+                const isSelected = difficulty === lvl.id;
                 return (
                   <button
-                    key={preset.count}
+                    key={lvl.id}
                     type="button"
-                    onClick={() => setSelectedPresetIndex(idx)}
-                    className={`p-3 rounded-2xl text-left border transition-all cursor-pointer flex flex-col justify-between ${
+                    onClick={() => setDifficulty(lvl.id)}
+                    className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-rose-500/15 border-rose-500/60 shadow-md shadow-rose-950/20 text-white'
-                        : 'bg-dark-950/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-dark-950'
+                        ? 'bg-[#173F3D] text-white border-[#173F3D] shadow-xs'
+                        : 'bg-[#FAF7F2] border-[#E6DFD3] text-[#1C1917] hover:bg-[#F2EAE0]'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-sm">{preset.label}</span>
-                      <div className="flex items-center gap-1 text-[11px] font-mono text-slate-400">
-                        <Clock className="w-3 h-3 text-rose-400" />
-                        <span>{preset.time}m</span>
-                      </div>
+                    <div className="text-xs font-bold flex items-center justify-center gap-1">
+                      <span>{lvl.label}</span>
+                      {lvl.recommended && (
+                        <span className="text-[9px] px-1 py-0.2 rounded bg-amber-400 text-[#1C1917] font-extrabold">
+                          GATE
+                        </span>
+                      )}
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-1">{preset.desc}</p>
+                    <div className={`text-[10px] mt-0.5 truncate ${isSelected ? 'text-[#FAF7F2]' : 'text-[#78716C]'}`}>
+                      {lvl.desc}
+                    </div>
                   </button>
                 );
               })}
             </div>
+
+            {difficulty === 'Hard' && (
+              <div className="p-2.5 rounded-xl bg-[#E5ECEB] border border-[#C9DCDA] text-[11px] text-[#173F3D]">
+                ⚡ <strong>Hard Benchmark</strong>: Calibrated to challenging, multi-tier derivations and official GATE CS examination standards.
+              </div>
+            )}
           </div>
 
-          {/* GATE CBT Features Info */}
-          <div className="p-3.5 rounded-2xl bg-dark-950/70 border border-slate-800 text-xs space-y-1.5 text-slate-300">
-            <div className="flex items-center gap-2 text-brand-400 font-semibold text-[11px]">
-              <ShieldCheck className="w-4 h-4" />
-              <span>Full Computer-Based Test (CBT) Simulation</span>
+          {/* 3. Number of Questions ("ask for question") */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <label className="font-bold text-[#1C1917] flex items-center gap-1.5 uppercase tracking-wider">
+                <BookOpen className="w-3.5 h-3.5 text-[#173F3D]" />
+                Number of Questions
+              </label>
+              <span className="font-bold text-[#173F3D]">
+                {questionCount} Questions ({timeLimitMinutes} Mins)
+              </span>
             </div>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              Launches into the official CBT test runner with digital countdown timer, question palette, answer marking scheme, and comprehensive performance analytics review upon submission.
-            </p>
+
+            <div className="grid grid-cols-5 gap-1.5">
+              {questionCountOptions.map((opt) => (
+                <button
+                  key={opt.count}
+                  type="button"
+                  onClick={() => setQuestionCount(opt.count)}
+                  className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all text-center cursor-pointer ${
+                    questionCount === opt.count
+                      ? 'bg-[#173F3D] text-white border-[#173F3D] shadow-xs'
+                      : 'bg-[#FAF7F2] border-[#E6DFD3] text-[#1C1917] hover:bg-[#F2EAE0]'
+                  }`}
+                >
+                  <div>{opt.count} Qs</div>
+                  <div className={`text-[9px] font-normal ${questionCount === opt.count ? 'text-[#FAF7F2]' : 'text-[#78716C]'}`}>
+                    {opt.time}m
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-1.5 text-[11px] text-[#78716C] pt-1">
+              <Clock className="w-3.5 h-3.5 text-[#173F3D]" />
+              <span>Standard pacing: ~2.5 minutes per question under CBT timer.</span>
+            </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-800 bg-dark-850 flex items-center justify-between gap-3">
+        {/* Modal Footer with Action Buttons */}
+        <div className="p-5 border-t border-[#E6DFD3] bg-[#FAF7F2] flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 bg-dark-900 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+            className="px-4 py-2 bg-white hover:bg-[#F2EAE0] text-[#1C1917] border border-[#DCD2C0] rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-2xs"
           >
             Cancel
           </button>
 
-          {/* Primary CTA: Attempt Exam */}
-          <button
-            type="button"
-            disabled={generating}
-            onClick={handleGenerateAndAttempt}
-            className="px-6 py-2.5 bg-gradient-to-r from-rose-600 via-purple-600 to-brand-600 hover:from-rose-500 hover:via-purple-500 hover:to-brand-500 disabled:opacity-50 text-white rounded-xl text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-rose-600/30 hover:scale-[1.02] transition-all cursor-pointer"
-          >
-            {generating ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin text-white" />
-                <span>Generating Exam...</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4 fill-current" />
-                <span>Attempt Generated Exam ({activePreset.count} Qs)</span>
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={generating}
+              onClick={() => handleGenerate(false)}
+              className="px-4 py-2 bg-white hover:bg-[#F2EAE0] text-[#173F3D] border border-[#173F3D] rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+            >
+              Generate to Dashboard
+            </button>
+
+            <button
+              type="button"
+              disabled={generating}
+              onClick={() => handleGenerate(true)}
+              className="px-5 py-2 bg-[#173F3D] hover:bg-[#102B2A] text-white rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all shadow-sm cursor-pointer"
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Generating...</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>Generate & Attempt Now</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

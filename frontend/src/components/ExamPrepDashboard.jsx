@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { AVAILABLE_EXAMS, GATE_SUBJECTS, GATE_EXAMS } from '../data/curatedExams';
-import { sendChatMessage, fetchExamPrepQuestions, fetchExamPrepSubjects, fetchExamPrepTests } from '../utils/api';
+import { sendChatMessage, fetchExamPrepQuestions, fetchExamPrepSubjects, fetchExamPrepTests, deleteExamPrepTest } from '../utils/api';
 import {
   ExamPrepHeader,
   ExamPrepAnalyticsBar,
   ExamPrepSubjectSidebar,
-  ExamPrepQuestionsView,
+  ExamPrepTestsView,
   ExamPrepAiSidebar,
   SubjectAnalyticsModal,
   GenerateExamModal
@@ -32,8 +32,21 @@ export default function ExamPrepDashboard({
   const [publishedTests, setPublishedTests] = useState([]);
   const [loadingDb, setLoadingDb] = useState(true);
 
-  // Right sidebar tab: 'generator' (CBT Studio) | 'chat' (AI GATE Tutor)
-  const [rightPanelTab, setRightPanelTab] = useState('generator');
+  // Handle test created from modal
+  function handleTestGenerated(newTest) {
+    setPublishedTests((prev) => [newTest, ...prev.filter((t) => t.id !== newTest.id)]);
+  }
+
+  // Handle test deletion
+  async function handleDeleteTest(testId, testTitle) {
+    if (!window.confirm(`Are you sure you want to delete test "${testTitle}"?`)) return;
+    try {
+      await deleteExamPrepTest(testId);
+      setPublishedTests((prev) => prev.filter((t) => t.id !== testId));
+    } catch (err) {
+      alert('Failed to delete test: ' + err.message);
+    }
+  }
 
   // Load Question Bank and Subjects directly from Database on mount
   useEffect(() => {
@@ -474,7 +487,6 @@ export default function ExamPrepDashboard({
 
   // Pre-fill question into AI Assistant with strict precision instruction
   function handleAskAiQuestion(q, subjectName) {
-    setRightPanelTab('chat');
     const prompt = `Solve this GATE CS question from ${subjectName}:\n\nQuestion: ${q.question}\nOptions:\nA) ${q.options?.A || ''}\nB) ${q.options?.B || ''}\nC) ${q.options?.C || ''}\nD) ${q.options?.D || ''}\n\nCorrect Answer: Option ${q.correctAnswer}\n\nProvide only the precise step-by-step derivation and key formulas. Do not include greetings, pleasantries, or extraneous commentary.`;
     handleSendChatMessage(prompt);
   }
@@ -529,18 +541,17 @@ export default function ExamPrepDashboard({
           onDragEnd={handlePrepLeftDragEnd}
         />
 
-        {/* Center Main Content Box: Question Bank Viewer from Admin DB */}
-        <ExamPrepQuestionsView
+        {/* Center Main Content Box: Generated Tests Viewer */}
+        <ExamPrepTestsView
           contentWidth={prepMainWidth}
           isResizing={isResizing}
-          subjectGroups={subjectGroups}
+          tests={publishedTests}
           selectedSubjectIds={selectedSubjectIds}
           isAllSelected={isAllSelected}
-          onSelectAllSubjects={() => setSelectedSubjectIds(['all'])}
-          revealedExplanations={revealedExplanations}
-          onToggleExplanation={toggleExplanation}
-          onAskAiQuestion={handleAskAiQuestion}
-          onOpenGenerateExam={() => setRightPanelTab('generator')}
+          dbSubjects={dbSubjects}
+          onLaunchExam={onLaunchExam}
+          onOpenGenerateModal={() => setShowGenerateModal(true)}
+          onDeleteTest={handleDeleteTest}
         />
 
         {/* Draggable Resize Handle between Questions View and AI Sidebar */}
@@ -551,18 +562,8 @@ export default function ExamPrepDashboard({
           onDragEnd={handlePrepRightDragEnd}
         />
 
-        {/* Right Panel: CBT Question Generator & AI GATE Tutor */}
+        {/* Right Panel: AI GATE Tutor for Doubts & Performance Coaching */}
         <ExamPrepAiSidebar
-          activeTab={rightPanelTab}
-          onTabChange={setRightPanelTab}
-          selectedSubjectIds={selectedSubjectIds}
-          isAllSelected={isAllSelected}
-          dbSubjects={dbSubjects}
-          dbQuestions={dbQuestions}
-          publishedTests={publishedTests}
-          onLaunchExam={onLaunchExam}
-          onRequireLogin={onRequireLogin}
-          currentUser={currentUser}
           chatMessages={chatMessages}
           chatInput={chatInput}
           onChangeChatInput={setChatInput}
@@ -571,6 +572,12 @@ export default function ExamPrepDashboard({
           onClearChat={handleClearChat}
           isAiThinking={isAiThinking}
           chatEndRef={chatEndRef}
+          subjectAnalytics={subjectAnalytics}
+          focusSubject={focusSubject}
+          bestSubject={bestSubject}
+          accuracy={accuracy}
+          totalAttempted={totalAttempted}
+          totalCorrect={totalCorrect}
           style={{ width: `${prepRightWidth}px` }}
         />
       </div>
@@ -600,6 +607,7 @@ export default function ExamPrepDashboard({
         isAllSelected={isAllSelected}
         questionsPool={dbQuestions.filter((q) => isAllSelected || selectedSubjectIds.includes(q.subjectId))}
         subjects={dbSubjects}
+        onTestGenerated={handleTestGenerated}
         onLaunchExam={onLaunchExam}
       />
     </div>

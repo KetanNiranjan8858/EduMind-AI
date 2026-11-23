@@ -1,6 +1,7 @@
 export { default as ExamPrepHeader } from './ExamPrepHeader';
 export { default as ExamPrepAnalyticsBar } from './ExamPrepAnalyticsBar';
 export { default as ExamPrepSubjectSidebar } from './ExamPrepSubjectSidebar';
+export { default as ExamPrepTestsView } from './ExamPrepTestsView';
 export { default as ExamPrepQuestionsView } from './ExamPrepQuestionsView';
 export { default as ExamPrepQuestionCard } from './ExamPrepQuestionCard';
 export { default as ExamPrepAiSidebar } from './ExamPrepAiSidebar';
