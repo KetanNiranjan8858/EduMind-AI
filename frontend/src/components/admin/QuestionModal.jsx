@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Sparkles, CheckCircle2, AlertCircle, Save, Loader2 } from 'lucide-react';
+import { X, Sparkles, CheckCircle2, AlertCircle, Save, Loader2, BookOpen } from 'lucide-react';
 import { GATE_SUBJECTS } from '../../data/curatedExams';
 
 export default function QuestionModal({
@@ -103,19 +103,19 @@ export default function QuestionModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-dark-900 border border-slate-800 rounded-3xl w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="bg-white border border-[#E6DFD3] rounded-3xl w-full max-w-3xl max-h-[92vh] flex flex-col shadow-xl overflow-hidden font-sans">
         {/* Modal Header */}
-        <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-dark-850/90">
+        <div className="p-5 border-b border-[#E6DFD3] flex items-center justify-between bg-[#FAF7F2]">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-tr from-rose-600 via-purple-600 to-brand-600 rounded-xl text-white shadow-md shadow-rose-600/20">
-              <Sparkles className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-[#173F3D] text-white flex items-center justify-center shadow-xs">
+              <BookOpen className="w-5 h-5 text-[#FAF7F2]" />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-white">
-                {isEditing ? 'Edit Exam Prep Question' : 'Upload New Exam Prep Question'}
+              <h3 className="text-sm font-bold text-[#1C1917]">
+                {isEditing ? 'Adjust Exam Prep Question' : 'Upload New Exam Prep Question'}
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-[#78716C] mt-0.5">
                 Parameters will be saved exclusively into the Exam Prep Question Bank
               </p>
             </div>
@@ -124,7 +124,7 @@ export default function QuestionModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+            className="p-1.5 text-[#78716C] hover:text-[#1C1917] hover:bg-[#E6DFD3]/40 rounded-xl transition-colors cursor-pointer"
             title="Close"
           >
             <X className="w-5 h-5" />
@@ -134,7 +134,7 @@ export default function QuestionModal({
         {/* Modal Body / Form */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
           {errorMsg && (
-            <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{errorMsg}</span>
             </div>
@@ -143,26 +143,26 @@ export default function QuestionModal({
           {/* Row 1: Exam & Subject Selection */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-bold text-slate-300 mb-1.5 block">
+              <label className="text-xs font-bold text-[#1C1917] mb-1.5 block">
                 Target Exam Track
               </label>
               <select
                 value={examId}
                 onChange={(e) => setExamId(e.target.value)}
-                className="w-full bg-dark-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-rose-500"
+                className="w-full bg-[#FAF7F2] border border-[#E6DFD3] rounded-xl px-3.5 py-2.5 text-xs text-[#1C1917] focus:outline-none focus:border-[#173F3D]"
               >
                 <option value="gate_cs">GATE Computer Science & IT (CS/IT)</option>
               </select>
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-300 mb-1.5 block">
+              <label className="text-xs font-bold text-[#1C1917] mb-1.5 block">
                 Subject
               </label>
               <select
                 value={subjectId}
                 onChange={(e) => setSubjectId(e.target.value)}
-                className="w-full bg-dark-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-rose-500"
+                className="w-full bg-[#FAF7F2] border border-[#E6DFD3] rounded-xl px-3.5 py-2.5 text-xs text-[#1C1917] focus:outline-none focus:border-[#173F3D]"
               >
                 {subjectsList.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -176,7 +176,7 @@ export default function QuestionModal({
           {/* Row 2: Topic & Difficulty */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-bold text-slate-300 mb-1.5 block">
+              <label className="text-xs font-bold text-[#1C1917] mb-1.5 block">
                 Specific Topic
               </label>
               <input
@@ -184,12 +184,12 @@ export default function QuestionModal({
                 placeholder="e.g. Multi-level Paging, Graph Theory, B-Trees"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
-                className="w-full bg-dark-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-rose-500"
+                className="w-full bg-[#FAF7F2] border border-[#E6DFD3] rounded-xl px-3.5 py-2.5 text-xs text-[#1C1917] focus:outline-none focus:border-[#173F3D]"
               />
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-300 mb-1.5 block">
+              <label className="text-xs font-bold text-[#1C1917] mb-1.5 block">
                 Difficulty Level
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -200,12 +200,8 @@ export default function QuestionModal({
                     onClick={() => setDifficulty(diff)}
                     className={`py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                       difficulty === diff
-                        ? diff === 'Hard'
-                          ? 'bg-amber-500/20 border-amber-500/60 text-amber-300 shadow-sm'
-                          : diff === 'Medium'
-                          ? 'bg-blue-500/20 border-blue-500/60 text-blue-300 shadow-sm'
-                          : 'bg-emerald-500/20 border-emerald-500/60 text-emerald-300 shadow-sm'
-                        : 'bg-dark-950 border-slate-800 text-slate-400 hover:text-white'
+                        ? 'bg-[#173F3D] border-[#173F3D] text-white shadow-2xs'
+                        : 'bg-[#FAF7F2] border-[#E6DFD3] text-[#78716C] hover:text-[#1C1917]'
                     }`}
                   >
                     {diff}
@@ -217,7 +213,7 @@ export default function QuestionModal({
 
           {/* Question Text */}
           <div>
-            <label className="text-xs font-bold text-slate-300 mb-1.5 block">
+            <label className="text-xs font-bold text-[#1C1917] mb-1.5 block">
               Question Statement
             </label>
             <textarea
@@ -225,7 +221,7 @@ export default function QuestionModal({
               placeholder="Enter complete technical question, numerical problem, or conceptual query..."
               value={questionText}
               onChange={(e) => setQuestionText(e.target.value)}
-              className="w-full bg-dark-950 border border-slate-800 rounded-xl p-3.5 text-xs text-slate-200 focus:outline-none focus:border-rose-500 leading-relaxed font-sans"
+              className="w-full bg-[#FAF7F2] border border-[#E6DFD3] rounded-xl p-3.5 text-xs text-[#1C1917] focus:outline-none focus:border-[#173F3D] leading-relaxed font-sans"
               required
             />
           </div>
@@ -233,11 +229,11 @@ export default function QuestionModal({
           {/* Multiple Choice Options A, B, C, D */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-300">
-                Options & Correct Answer
+              <label className="text-xs font-bold text-[#1C1917]">
+                Multiple Choice Options (Select correct option)
               </label>
-              <span className="text-[11px] text-slate-400">
-                Select the radio button beside the correct option
+              <span className="text-[11px] text-[#78716C]">
+                Click an option card to mark it as the correct answer
               </span>
             </div>
 
@@ -255,15 +251,15 @@ export default function QuestionModal({
                     onClick={() => setCorrectAnswer(key)}
                     className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center gap-3 ${
                       isCorrect
-                        ? 'bg-emerald-500/10 border-emerald-500/50 shadow-sm'
-                        : 'bg-dark-950 border-slate-800 hover:border-slate-700'
+                        ? 'bg-[#E5ECEB] border-[#173F3D] text-[#173F3D] shadow-2xs'
+                        : 'bg-[#FAF7F2] border-[#E6DFD3] hover:border-[#DCD2C0]'
                     }`}
                   >
                     <div
                       className={`w-6 h-6 rounded-lg font-bold text-xs flex items-center justify-center shrink-0 ${
                         isCorrect
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-slate-800 text-slate-400'
+                          ? 'bg-[#173F3D] text-white'
+                          : 'bg-[#E6DFD3] text-[#78716C]'
                       }`}
                     >
                       {key}
@@ -274,11 +270,11 @@ export default function QuestionModal({
                       value={value}
                       onChange={(e) => setter(e.target.value)}
                       onClick={(e) => e.stopPropagation()}
-                      className="flex-1 bg-transparent border-0 text-xs text-slate-200 focus:outline-none"
+                      className="flex-1 bg-transparent border-0 text-xs text-[#1C1917] focus:outline-none font-medium"
                       required
                     />
                     {isCorrect && (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <CheckCircle2 className="w-4 h-4 text-[#173F3D] shrink-0" />
                     )}
                   </div>
                 );
@@ -288,37 +284,37 @@ export default function QuestionModal({
 
           {/* Explanation & Solution */}
           <div>
-            <label className="text-xs font-bold text-slate-300 mb-1.5 block">
-              Detailed GATE Solution & Mathematical Derivation
+            <label className="text-xs font-bold text-[#1C1917] mb-1.5 block">
+              Detailed Solution & Derivation Explanation
             </label>
             <textarea
               rows={3}
               placeholder="Explain how to solve this step-by-step, formulas used, and why the selected option is correct..."
               value={explanation}
               onChange={(e) => setExplanation(e.target.value)}
-              className="w-full bg-dark-950 border border-slate-800 rounded-xl p-3.5 text-xs text-slate-200 focus:outline-none focus:border-rose-500 leading-relaxed font-sans"
+              className="w-full bg-[#FAF7F2] border border-[#E6DFD3] rounded-xl p-3.5 text-xs text-[#1C1917] focus:outline-none focus:border-[#173F3D] leading-relaxed font-sans"
               required
             />
           </div>
 
           {/* Modal Footer */}
-          <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-3">
+          <div className="pt-3 border-t border-[#E6DFD3] flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-dark-950 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+              className="px-4 py-2 bg-[#FAF7F2] hover:bg-[#F2EAE0] text-[#1C1917] border border-[#E6DFD3] rounded-xl text-xs font-semibold transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-5 py-2.5 bg-gradient-to-r from-rose-600 to-purple-600 hover:from-rose-500 hover:to-purple-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-rose-600/20 cursor-pointer"
+              className="px-5 py-2.5 bg-[#173F3D] hover:bg-[#102B2A] disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs cursor-pointer transition-all"
             >
               {saving ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Saving...</span>
+                  <span>Saving to Exam Prep DB...</span>
                 </>
               ) : (
                 <>

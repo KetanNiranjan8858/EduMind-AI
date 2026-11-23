@@ -1,89 +1,90 @@
 import React, { useState } from 'react';
 import {
   ShieldCheck,
-  Users,
   BookOpen,
-  User,
-  Activity,
+  Sparkles,
+  ArrowLeft,
   Layers,
-  Settings,
   Database,
   ChevronRight,
-  Shield
+  Shield,
+  Upload
 } from 'lucide-react';
-import AdminStudentManager from './AdminStudentManager';
 import AdminQuestionManager from './AdminQuestionManager';
+import AdminMockTestManager from './AdminMockTestManager';
 
 export default function AdminPortal({
-  currentUser
+  currentUser,
+  onReturnToPrep,
+  onLaunchExam
 }) {
-  // 'students' | 'questions'
-  const [activeTab, setActiveTab] = useState('students');
+  // 'questions' | 'mocktests'
+  const [activeTab, setActiveTab] = useState('questions');
 
   return (
-    <div className="h-screen w-screen flex bg-dark-950 text-slate-100 overflow-hidden font-sans">
+    <div className="h-screen w-screen flex bg-[#F4EFE6] text-[#1C1917] overflow-hidden font-sans">
       {/* ==================================================== */}
       {/* 1. Dedicated Admin Sidebar (Left Navigation)         */}
       {/* ==================================================== */}
-      <aside className="w-64 shrink-0 bg-dark-900 border-r border-slate-800 flex flex-col justify-between h-full select-none z-20 shadow-lg">
+      <aside className="w-64 shrink-0 bg-white border-r border-[#E6DFD3] flex flex-col justify-between h-full select-none z-20 shadow-xs">
         {/* Top: Branding & Title */}
         <div>
-          <div className="h-14 px-5 border-b border-slate-800 flex items-center gap-3 bg-dark-900/90">
-            <div className="w-9 h-9 rounded-xl duo-gradient flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
-              <ShieldCheck className="w-5 h-5 text-cyan-200" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-sm tracking-tight text-white">
-                  EduMind <span className="duo-gradient-text">Admin</span>
+          <div className="h-14 px-5 border-b border-[#E6DFD3] flex items-center justify-between bg-white">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[#173F3D] flex items-center justify-center text-white shadow-xs">
+                <ShieldCheck className="w-4 h-4 text-[#FAF7F2]" />
+              </div>
+              <div>
+                <span className="font-extrabold text-sm tracking-tight text-[#1C1917]">
+                  Exam Prep <span className="text-[#173F3D]">Admin</span>
+                </span>
+                <span className="text-[10px] text-[#78716C] block -mt-0.5 font-medium">
+                  GATE Question Control
                 </span>
               </div>
-              <span className="text-[10px] text-slate-400 block -mt-0.5 font-medium">
-                Institutional Control Center
-              </span>
             </div>
           </div>
 
           {/* Core Modules Navigation */}
-          <div className="p-3 space-y-1">
-            <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-              Management Modules
+          <div className="p-3 space-y-1.5">
+            <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#78716C]">
+              Exam Prep Operations
             </div>
 
-            {/* Students & Performance */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('students')}
-              className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
-                activeTab === 'students'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Users className={`w-4 h-4 ${activeTab === 'students' ? 'text-white' : 'text-indigo-400'}`} />
-                <span>Students & Performance</span>
-              </div>
-              {activeTab === 'students' && (
-                <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-              )}
-            </button>
-
-            {/* Exam Prep Question Bank */}
+            {/* Questions Bank & Uploads */}
             <button
               type="button"
               onClick={() => setActiveTab('questions')}
               className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                 activeTab === 'questions'
-                  ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/20'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  ? 'bg-[#173F3D] text-white shadow-xs'
+                  : 'text-[#1C1917] hover:bg-[#FAF7F2]'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <BookOpen className={`w-4 h-4 ${activeTab === 'questions' ? 'text-white' : 'text-cyan-400'}`} />
-                <span>Exam Prep Questions</span>
+                <BookOpen className={`w-4 h-4 ${activeTab === 'questions' ? 'text-white' : 'text-[#173F3D]'}`} />
+                <span>Question Bank & Upload</span>
               </div>
               {activeTab === 'questions' && (
+                <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              )}
+            </button>
+
+            {/* Mock Test Generator */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('mocktests')}
+              className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
+                activeTab === 'mocktests'
+                  ? 'bg-[#173F3D] text-white shadow-xs'
+                  : 'text-[#1C1917] hover:bg-[#FAF7F2]'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Sparkles className={`w-4 h-4 ${activeTab === 'mocktests' ? 'text-white' : 'text-[#173F3D]'}`} />
+                <span>Mock Test Generator</span>
+              </div>
+              {activeTab === 'mocktests' && (
                 <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
               )}
             </button>
@@ -91,28 +92,28 @@ export default function AdminPortal({
         </div>
 
         {/* Bottom: Admin Account & System Status */}
-        <div className="p-3 border-t border-slate-800 bg-dark-950/60 space-y-2">
+        <div className="p-3 border-t border-[#E6DFD3] bg-[#FAF7F2] space-y-2">
           {/* Status Indicator */}
-          <div className="px-3 py-1.5 bg-dark-900 border border-slate-800/80 rounded-xl flex items-center justify-between text-[11px] text-slate-400">
+          <div className="px-3 py-1.5 bg-white border border-[#E6DFD3] rounded-xl flex items-center justify-between text-[11px] text-[#78716C]">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-              <span className="text-slate-300 font-medium">Exam Prep DB</span>
+              <span className="w-2 h-2 rounded-full bg-[#173F3D] animate-ping" />
+              <span className="text-[#1C1917] font-medium">Exam Prep DB</span>
             </div>
-            <span className="text-[10px] font-mono text-cyan-400 font-semibold">Active</span>
+            <span className="text-[10px] font-mono text-[#173F3D] font-bold">Active</span>
           </div>
 
           {/* Current Admin Identity */}
-          <div className="px-3 py-2 bg-dark-900 border border-slate-800 rounded-xl flex items-center justify-between">
+          <div className="px-3 py-2 bg-white border border-[#E6DFD3] rounded-xl flex items-center justify-between">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-indigo-500/15 text-cyan-300 border border-cyan-500/30 flex items-center justify-center font-bold text-xs shrink-0">
+              <div className="w-7 h-7 rounded-lg bg-[#173F3D] text-white flex items-center justify-center font-bold text-xs shrink-0">
                 {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'A'}
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-bold text-white truncate">
+                <p className="text-xs font-bold text-[#1C1917] truncate">
                   {currentUser?.name || 'Administrator'}
                 </p>
-                <p className="text-[10px] text-amber-400 font-medium truncate">
-                  Staff / Admin
+                <p className="text-[10px] text-[#173F3D] font-semibold truncate">
+                  Staff / Admin Access
                 </p>
               </div>
             </div>
@@ -125,28 +126,44 @@ export default function AdminPortal({
       {/* ==================================================== */}
       <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
         {/* Top Header of Main Area */}
-        <header className="h-14 bg-dark-900/60 border-b border-slate-800 px-6 flex items-center justify-between shrink-0 shadow-sm z-10 backdrop-blur-sm">
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-slate-400 font-medium">Admin Portal</span>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
-            <span className="text-white font-bold">
-              {activeTab === 'students' ? 'Students & Performance Directory' : 'Exam Prep Question Bank'}
-            </span>
+        <header className="h-14 bg-white border-b border-[#E6DFD3] px-6 flex items-center justify-between shrink-0 shadow-2xs z-10">
+          <div className="flex items-center gap-3 text-xs">
+            {onReturnToPrep && (
+              <button
+                type="button"
+                onClick={onReturnToPrep}
+                className="px-3 py-1.5 bg-[#FAF7F2] hover:bg-[#F2EAE0] text-[#1C1917] border border-[#E6DFD3] rounded-xl font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                title="Return to Exam Preparation Dashboard"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 text-[#173F3D]" />
+                <span>Return to Exam Prep</span>
+              </button>
+            )}
+
+            <div className="h-4 w-px bg-[#E6DFD3]" />
+
+            <div className="flex items-center gap-1.5">
+              <span className="text-[#78716C] font-medium">Exam Prep Admin</span>
+              <ChevronRight className="w-3.5 h-3.5 text-[#78716C]" />
+              <span className="text-[#1C1917] font-bold">
+                {activeTab === 'questions' ? 'Questions Bank & Upload Center' : 'Mock Test Generator & Management'}
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-300 border border-amber-500/20">
-              Admin Session Active
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#E8DFCF] text-[#173F3D] border border-[#DCD2C0]">
+              Exam Prep DB Active
             </span>
           </div>
         </header>
 
         {/* Content View */}
         <main className="flex-1 overflow-hidden">
-          {activeTab === 'students' ? (
-            <AdminStudentManager />
+          {activeTab === 'questions' ? (
+            <AdminQuestionManager onSwitchToMockTests={() => setActiveTab('mocktests')} />
           ) : (
-            <AdminQuestionManager />
+            <AdminMockTestManager onLaunchExam={onLaunchExam} />
           )}
         </main>
       </div>

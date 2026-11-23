@@ -21,6 +21,7 @@ export default function ExamPrepDashboard({
   examHistory = [],
   onLaunchExam,
   onReturnToStudio,
+  onOpenAdmin,
   onRequireLogin
 }) {
   // Menu Option to select exam track (Currently GATE CS/IT)
@@ -477,6 +478,7 @@ export default function ExamPrepDashboard({
         currentUser={currentUser}
         onReturnToStudio={onReturnToStudio}
         onRequireLogin={onRequireLogin}
+        onOpenAdmin={onOpenAdmin}
       />
 
       {/* 2. Top Analytics Bar */}

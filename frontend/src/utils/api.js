@@ -338,6 +338,17 @@ export async function fetchExamPrepTests(examId = 'gate_cs') {
   return await res.json();
 }
 
+export async function deleteExamPrepTest(id) {
+  const res = await fetch(`${API_BASE}/examprep/tests/${encodeURIComponent(id)}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Failed to delete mock test');
+  }
+  return await res.json();
+}
+
 // ================= ADMIN COMMAND CENTER =================
 export async function fetchAdminStudents() {
   const res = await fetch(`${API_BASE}/admin/students`);

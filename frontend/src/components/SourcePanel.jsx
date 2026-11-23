@@ -29,8 +29,6 @@ export default function SourcePanel({
   activeWorkspaceId,
   pinnedIds = [],
   examHistoryCount = 0,
-  currentUser = null,
-  onOpenAdmin,
   onSelectWorkspace,
   onTogglePin,
   onUpdateWorkspaceName,

@@ -233,3 +233,18 @@ export async function getExamPrepTests(req, res) {
     return res.status(500).json({ success: false, message: 'Failed to fetch tests', error: err.message });
   }
 }
+
+/**
+ * DELETE /api/examprep/tests/:id
+ * Delete a mock test from the database
+ */
+export async function deleteExamPrepTest(req, res) {
+  try {
+    const { id } = req.params;
+    await db.query('DELETE FROM exam_prep_tests WHERE id = ?', [id]);
+    return res.json({ success: true, message: 'Mock test deleted successfully' });
+  } catch (err) {
+    console.error('[ExamPrep API] Error deleting test:', err);
+    return res.status(500).json({ success: false, message: 'Failed to delete test', error: err.message });
+  }
+}

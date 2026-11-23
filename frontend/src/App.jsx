@@ -735,6 +735,7 @@ export default function App() {
           onAdminVerified={(elevatedUser) => {
             setCurrentUser(elevatedUser);
           }}
+          onReturnToPrep={() => setViewMode('examprep')}
           onReturnToStudio={handleReturnToStudio}
         />
       );
@@ -742,6 +743,8 @@ export default function App() {
     return (
       <AdminPortal
         currentUser={currentUser}
+        onReturnToPrep={() => setViewMode('examprep')}
+        onLaunchExam={(quiz) => handleLaunchExam(quiz, 'examprep')}
       />
     );
   }
@@ -811,8 +814,6 @@ export default function App() {
             activeWorkspaceId={activeWorkspaceId}
             pinnedIds={pinnedIds}
             examHistoryCount={studioExamHistory.length}
-            currentUser={currentUser}
-            onOpenAdmin={() => setViewMode('admin')}
             onSelectWorkspace={(id) => setActiveWorkspaceId(id)}
             onTogglePin={handleTogglePin}
             onUpdateWorkspaceName={handleUpdateWorkspaceName}
