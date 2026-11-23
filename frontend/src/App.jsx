@@ -701,7 +701,6 @@ export default function App() {
           examHistory={examPrepHistory}
           onLaunchExam={(quiz) => handleLaunchExam(quiz, 'examprep')}
           onReturnToStudio={handleReturnToStudio}
-          onOpenAdmin={() => setViewMode('admin')}
           onRequireLogin={() => {
             setLoginPromptMessage('Please sign in or register to attempt CBT exams and track scores.');
             setIsLoginModalOpen(true);

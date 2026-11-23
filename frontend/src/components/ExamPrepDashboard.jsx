@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { AVAILABLE_EXAMS, GATE_SUBJECTS, GATE_EXAMS } from '../data/curatedExams';
-import { sendChatMessage, fetchExamPrepQuestions, fetchExamPrepSubjects } from '../utils/api';
+import { sendChatMessage, fetchExamPrepQuestions, fetchExamPrepSubjects, fetchExamPrepTests } from '../utils/api';
 import {
   ExamPrepHeader,
   ExamPrepAnalyticsBar,
@@ -21,25 +21,29 @@ export default function ExamPrepDashboard({
   examHistory = [],
   onLaunchExam,
   onReturnToStudio,
-  onOpenAdmin,
   onRequireLogin
 }) {
   // Menu Option to select exam track (Currently GATE CS/IT)
   const [selectedExamId, setSelectedExamId] = useState('gate_cs');
 
-  // Database-backed Questions and Subjects State
+  // Database-backed Questions, Subjects and Published Tests State
   const [dbQuestions, setDbQuestions] = useState([]);
   const [dbSubjects, setDbSubjects] = useState(GATE_SUBJECTS);
+  const [publishedTests, setPublishedTests] = useState([]);
   const [loadingDb, setLoadingDb] = useState(true);
+
+  // Right sidebar tab: 'generator' (CBT Studio) | 'chat' (AI GATE Tutor)
+  const [rightPanelTab, setRightPanelTab] = useState('generator');
 
   // Load Question Bank and Subjects directly from Database on mount
   useEffect(() => {
     let mounted = true;
     async function loadDb() {
       try {
-        const [qRes, sRes] = await Promise.all([
+        const [qRes, sRes, tRes] = await Promise.all([
           fetchExamPrepQuestions({ examId: 'gate_cs' }).catch(() => ({ questions: [] })),
-          fetchExamPrepSubjects().catch(() => ({ subjects: [] }))
+          fetchExamPrepSubjects().catch(() => ({ subjects: [] })),
+          fetchExamPrepTests('gate_cs').catch(() => ({ tests: [] }))
         ]);
         if (!mounted) return;
         if (qRes.questions && qRes.questions.length > 0) {
@@ -58,6 +62,9 @@ export default function ExamPrepDashboard({
         }
         if (sRes.subjects && sRes.subjects.length > 0) {
           setDbSubjects(sRes.subjects);
+        }
+        if (tRes.tests && tRes.tests.length > 0) {
+          setPublishedTests(tRes.tests);
         }
       } catch (err) {
         console.warn('[ExamPrep] Error loading database questions:', err);
@@ -467,6 +474,7 @@ export default function ExamPrepDashboard({
 
   // Pre-fill question into AI Assistant with strict precision instruction
   function handleAskAiQuestion(q, subjectName) {
+    setRightPanelTab('chat');
     const prompt = `Solve this GATE CS question from ${subjectName}:\n\nQuestion: ${q.question}\nOptions:\nA) ${q.options?.A || ''}\nB) ${q.options?.B || ''}\nC) ${q.options?.C || ''}\nD) ${q.options?.D || ''}\n\nCorrect Answer: Option ${q.correctAnswer}\n\nProvide only the precise step-by-step derivation and key formulas. Do not include greetings, pleasantries, or extraneous commentary.`;
     handleSendChatMessage(prompt);
   }
@@ -478,7 +486,6 @@ export default function ExamPrepDashboard({
         currentUser={currentUser}
         onReturnToStudio={onReturnToStudio}
         onRequireLogin={onRequireLogin}
-        onOpenAdmin={onOpenAdmin}
       />
 
       {/* 2. Top Analytics Bar */}
@@ -522,10 +529,18 @@ export default function ExamPrepDashboard({
           onDragEnd={handlePrepLeftDragEnd}
         />
 
-        {/* Center Main Content Box: Empty state with 'Yet to come' */}
+        {/* Center Main Content Box: Question Bank Viewer from Admin DB */}
         <ExamPrepQuestionsView
           contentWidth={prepMainWidth}
           isResizing={isResizing}
+          subjectGroups={subjectGroups}
+          selectedSubjectIds={selectedSubjectIds}
+          isAllSelected={isAllSelected}
+          onSelectAllSubjects={() => setSelectedSubjectIds(['all'])}
+          revealedExplanations={revealedExplanations}
+          onToggleExplanation={toggleExplanation}
+          onAskAiQuestion={handleAskAiQuestion}
+          onOpenGenerateExam={() => setRightPanelTab('generator')}
         />
 
         {/* Draggable Resize Handle between Questions View and AI Sidebar */}
@@ -536,8 +551,18 @@ export default function ExamPrepDashboard({
           onDragEnd={handlePrepRightDragEnd}
         />
 
-        {/* Right AI Assistant Sidebar */}
+        {/* Right Panel: CBT Question Generator & AI GATE Tutor */}
         <ExamPrepAiSidebar
+          activeTab={rightPanelTab}
+          onTabChange={setRightPanelTab}
+          selectedSubjectIds={selectedSubjectIds}
+          isAllSelected={isAllSelected}
+          dbSubjects={dbSubjects}
+          dbQuestions={dbQuestions}
+          publishedTests={publishedTests}
+          onLaunchExam={onLaunchExam}
+          onRequireLogin={onRequireLogin}
+          currentUser={currentUser}
           chatMessages={chatMessages}
           chatInput={chatInput}
           onChangeChatInput={setChatInput}

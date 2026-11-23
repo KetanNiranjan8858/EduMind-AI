@@ -1,11 +1,10 @@
 import React from 'react';
-import { Target, ArrowLeft, User, Shield } from 'lucide-react';
+import { Target, ArrowLeft, User } from 'lucide-react';
 
 export default function ExamPrepHeader({
   currentUser,
   onReturnToStudio,
-  onRequireLogin,
-  onOpenAdmin
+  onRequireLogin
 }) {
   return (
     <header className="h-14 bg-[#F4EFE6] border-b border-[#E6DFD3] px-5 flex items-center justify-between shrink-0 z-30">
@@ -37,20 +36,8 @@ export default function ExamPrepHeader({
         </div>
       </div>
 
-      {/* Right Controls: Admin Control & User Profile */}
+      {/* Right Controls: User Profile / Login */}
       <div className="flex items-center gap-2.5">
-        {onOpenAdmin && (
-          <button
-            type="button"
-            onClick={onOpenAdmin}
-            className="px-3 py-1.5 bg-white hover:bg-[#FAF7F2] text-[#173F3D] border border-[#DCD2C0] hover:border-[#173F3D] rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
-            title="Open Exam Prep Admin Portal"
-          >
-            <Shield className="w-3.5 h-3.5 text-[#173F3D]" />
-            <span>Admin Control</span>
-          </button>
-        )}
-
         {currentUser ? (
           <div className="px-3.5 py-1.5 bg-white border border-[#DCD2C0] rounded-xl text-xs flex items-center gap-2 text-[#1C1917] font-semibold shadow-xs">
             <div className="w-5 h-5 rounded-full bg-[#173F3D] text-[#FAF7F2] flex items-center justify-center font-bold text-[10px]">
