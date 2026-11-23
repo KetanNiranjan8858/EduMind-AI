@@ -362,3 +362,71 @@ CRITICAL MANDATORY INSTRUCTIONS:
     };
   }
 }
+
+/**
+ * Generate a comprehensive step-by-step academic explanation for a question using Gemini AI
+ */
+export async function generateQuestionExplanation({
+  questionText = '',
+  options = {},
+  correctAnswer = 'A',
+  subject = '',
+  topic = ''
+}) {
+  const ai = getAIClient();
+  const formattedOptions = Object.entries(options || {})
+    .map(([k, v]) => `(${k}) ${v}`)
+    .join('\n');
+
+  if (!ai) {
+    return {
+      explanation: `Option (${correctAnswer}) is correct.\n\nStep-by-step Analysis:\n1. Core Principle: The question evaluates key principles of ${topic || subject || 'the syllabus'}.\n2. Evaluation of Options:\n- Option (${correctAnswer}) adheres to the standard theoretical definitions and algorithmic invariants.\n- Other options introduce inconsistent constraints or invalid edge-case assumptions.\n3. Conclusion: Option (${correctAnswer}) is the correct choice.`
+    };
+  }
+
+  try {
+    const prompt = `You are an elite professor and expert GATE examination instructor.
+Generate a comprehensive, rigorous, and clear step-by-step mathematical/conceptual solution and explanation for the following multiple-choice question.
+
+Subject: ${subject || 'Computer Science & Information Technology'}
+Topic: ${topic || 'General'}
+Question:
+${questionText}
+
+Options:
+${formattedOptions}
+
+Correct Answer: Option (${correctAnswer})
+
+INSTRUCTIONS:
+1. Explain step-by-step why Option (${correctAnswer}) is conceptually, mathematically, or algorithmically correct.
+2. Provide all key formulas, step-by-step calculations, truth tables, or state transition derivations where relevant.
+3. Briefly mention why the distractor options are incorrect.
+4. Do NOT include conversational filler, greetings, or sign-offs (no "Sure!", "Here is the explanation:", "Hope this helps"). Start directly with the core solution or analysis.
+5. Format cleanly using compact Markdown.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{ text: prompt }],
+      config: {
+        temperature: 0.2
+      }
+    });
+
+    let explanation = response.text?.trim() || `Option (${correctAnswer}) is confirmed correct.`;
+    explanation = explanation
+      .replace(/^(#{1,6}\s*)\*\*(.+?)\*\*/gm, '$1$2')
+      .replace(/^(\s*)\*\*(.+?)\*\*(\s*:?)\s*$/gm, '$1$2$3')
+      .replace(/^(\s*[-*•]\s*)\*\*(.+?)\*\*(\s*:?)/gm, '$1$2$3')
+      .replace(/^(\s*\d+[\.\)]\s*)\*\*(.+?)\*\*(\s*:?)/gm, '$1$2$3')
+      .replace(/^(\s*)\*\*(.+?):?\*\*:\s*/gm, '$1$2: ')
+      .replace(/^(\s*)\*\*(.+?):\*\*\s*/gm, '$1$2: ');
+
+    return { explanation };
+  } catch (err) {
+    console.error('[Gemini Explanation] Error generating explanation:', err);
+    return {
+      explanation: `Option (${correctAnswer}) is correct.\n\nConceptual Summary (${topic || subject}):\nStandard principles dictate that Option (${correctAnswer}) satisfies all specified invariants.`
+    };
+  }
+}

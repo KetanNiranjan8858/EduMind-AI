@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import db from '../config/db.js';
 import { GATE_SUBJECTS_METADATA } from './examPrepController.js';
+import { generateQuestionExplanation } from '../services/geminiService.js';
 
 /**
  * 1. GET /api/admin/students
@@ -623,5 +624,63 @@ export async function verifyAdminPasscode(req, res) {
   } catch (err) {
     console.error('[Admin API] Error verifying admin:', err);
     return res.status(500).json({ success: false, message: 'Verification failed', error: err.message });
+  }
+}
+
+/**
+ * 12. POST /api/admin/questions/generate-explanation
+ * Generate a step-by-step academic explanation for a question with Gemini AI
+ */
+export async function generateAdminQuestionExplanation(req, res) {
+  try {
+    const { questionText, options, correctAnswer, subject, topic } = req.body;
+    if (!questionText || !questionText.trim()) {
+      return res.status(400).json({ success: false, message: 'Question text is required to generate an explanation.' });
+    }
+
+    const result = await generateQuestionExplanation({
+      questionText: questionText.trim(),
+      options: options || {},
+      correctAnswer: (correctAnswer || 'A').toUpperCase(),
+      subject: subject || '',
+      topic: topic || ''
+    });
+
+    return res.json({
+      success: true,
+      explanation: result.explanation
+    });
+  } catch (err) {
+    console.error('[Admin API] Error generating AI explanation:', err);
+    return res.status(500).json({ success: false, message: 'Failed to generate explanation', error: err.message });
+  }
+}
+
+/**
+ * 13. PATCH /api/admin/questions/:id/explanation
+ * Directly update/save an explanation for a specific question
+ */
+export async function updateAdminQuestionExplanation(req, res) {
+  try {
+    const { id } = req.params;
+    const { explanation } = req.body;
+
+    if (explanation === undefined || explanation === null) {
+      return res.status(400).json({ success: false, message: 'Explanation text is required.' });
+    }
+
+    await db.query(
+      `UPDATE exam_prep_questions SET explanation = ? WHERE id = ?`,
+      [explanation.trim(), id]
+    );
+
+    return res.json({
+      success: true,
+      message: 'Explanation updated successfully.',
+      explanation: explanation.trim()
+    });
+  } catch (err) {
+    console.error('[Admin API] Error updating explanation:', err);
+    return res.status(500).json({ success: false, message: 'Failed to update explanation', error: err.message });
   }
 }

@@ -3,7 +3,10 @@ import {
   BookOpen,
   Search,
   Filter,
+  Edit,
+  Edit3,
   Trash2,
+  Check,
   CheckCircle2,
   Layers,
   Sparkles,
@@ -16,10 +19,14 @@ import {
 } from 'lucide-react';
 import {
   fetchAdminQuestions,
+  updateAdminQuestion,
   deleteAdminQuestion,
-  fetchAdminTopics
+  fetchAdminTopics,
+  generateAdminExplanation,
+  updateAdminQuestionExplanation
 } from '../../utils/api';
 import { GATE_SUBJECTS } from '../../data/curatedExams';
+import QuestionModal from './QuestionModal';
 
 export default function AdminQuestionManager({ onSwitchToMockTests }) {
   const [questions, setQuestions] = useState([]);
@@ -35,7 +42,16 @@ export default function AdminQuestionManager({ onSwitchToMockTests }) {
   const [page, setPage] = useState(1);
   const limit = 25;
 
+  // Question editing modal
+  const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState(null);
+
+  // Inline explanation editing
   const [expandedExplanationId, setExpandedExplanationId] = useState(null);
+  const [editingExplanationId, setEditingExplanationId] = useState(null);
+  const [inlineExplanationText, setInlineExplanationText] = useState('');
+  const [isGeneratingInlineAI, setIsGeneratingInlineAI] = useState(false);
+  const [savingInlineExplanation, setSavingInlineExplanation] = useState(false);
 
   // Topics cache
   const [topicsMap, setTopicsMap] = useState({});
@@ -94,6 +110,13 @@ export default function AdminQuestionManager({ onSwitchToMockTests }) {
     setPage(1);
   }
 
+  async function handleSaveQuestion(payload, questionId) {
+    if (questionId) {
+      await updateAdminQuestion(questionId, payload);
+    }
+    loadQuestions();
+  }
+
   async function handleDeleteQuestion(id, qText) {
     if (!window.confirm(`Delete question: "${qText.slice(0, 60)}..." from Exam Prep database?`)) return;
     try {
@@ -102,6 +125,41 @@ export default function AdminQuestionManager({ onSwitchToMockTests }) {
       setTotalQuestions((prev) => Math.max(0, prev - 1));
     } catch (err) {
       alert('Failed to delete question: ' + err.message);
+    }
+  }
+
+  async function handleInlineAIGenerate(q) {
+    setIsGeneratingInlineAI(true);
+    try {
+      const res = await generateAdminExplanation({
+        questionText: q.question,
+        options: q.options || {},
+        correctAnswer: q.correctAnswer || 'A',
+        subject: q.subjectName || q.subjectId,
+        topic: q.topic || ''
+      });
+      if (res.explanation) {
+        setInlineExplanationText(res.explanation);
+      }
+    } catch (err) {
+      alert('Failed to generate AI explanation: ' + err.message);
+    } finally {
+      setIsGeneratingInlineAI(false);
+    }
+  }
+
+  async function handleSaveInlineExplanation(questionId) {
+    setSavingInlineExplanation(true);
+    try {
+      await updateAdminQuestionExplanation(questionId, inlineExplanationText);
+      setQuestions((prev) =>
+        prev.map((q) => (q.id === questionId ? { ...q, explanation: inlineExplanationText } : q))
+      );
+      setEditingExplanationId(null);
+    } catch (err) {
+      alert('Failed to save explanation: ' + err.message);
+    } finally {
+      setSavingInlineExplanation(false);
     }
   }
 
@@ -297,8 +355,19 @@ export default function AdminQuestionManager({ onSwitchToMockTests }) {
                     </span>
                   </div>
 
-                  {/* Actions: Delete Only (Edit removed) */}
+                  {/* Actions: Edit Question & Delete Question */}
                   <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingQuestion(q);
+                        setIsQuestionModalOpen(true);
+                      }}
+                      className="p-1.5 text-[#78716C] hover:text-[#173F3D] hover:bg-[#FAF7F2] rounded-lg transition-colors cursor-pointer"
+                      title="Edit Question & Choices"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleDeleteQuestion(q.id, q.question)}
@@ -345,27 +414,156 @@ export default function AdminQuestionManager({ onSwitchToMockTests }) {
                   })}
                 </div>
 
-                {/* Explanation Toggle */}
-                {q.explanation && (
-                  <div className="pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setExpandedExplanationId(expandedExplanationId === q.id ? null : q.id)}
-                      className="text-[11px] text-[#173F3D] font-semibold hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <HelpCircle className="w-3 h-3" />
-                      <span>{expandedExplanationId === q.id ? 'Hide Explanation' : 'View Solution Explanation'}</span>
-                    </button>
-                    {expandedExplanationId === q.id && (
-                      <div className="mt-2 p-3 rounded-xl bg-[#FAF7F2] border border-[#E6DFD3] text-[11px] text-[#78716C] leading-relaxed">
-                        <span className="font-bold text-[#1C1917] block mb-1">
-                          Solution & Derivation:
+                {/* Explanation Section: View, Inline Edit & AI Generator */}
+                <div className="pt-2 border-t border-[#F0EBE1]">
+                  {editingExplanationId === q.id ? (
+                    /* Inline Explanation Editor */
+                    <div className="p-3.5 rounded-xl bg-[#FAF7F2] border border-[#173F3D]/30 space-y-2.5 animate-in fade-in duration-150">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-[#1C1917] flex items-center gap-1.5">
+                          <Edit3 className="w-3.5 h-3.5 text-[#173F3D]" />
+                          <span>Edit Solution & Derivation Explanation</span>
                         </span>
-                        <span>{q.explanation}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleInlineAIGenerate(q)}
+                          disabled={isGeneratingInlineAI}
+                          className="px-2.5 py-1 bg-[#173F3D] hover:bg-[#102B2A] text-white disabled:opacity-50 rounded-lg text-[11px] font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                          title="Generate or enhance explanation using Gemini AI"
+                        >
+                          {isGeneratingInlineAI ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin text-amber-300" />
+                              <span>AI Generating...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3 h-3 text-amber-300" />
+                              <span>✨ AI Generate Explanation</span>
+                            </>
+                          )}
+                        </button>
                       </div>
-                    )}
-                  </div>
-                )}
+
+                      <textarea
+                        rows={4}
+                        value={inlineExplanationText}
+                        onChange={(e) => setInlineExplanationText(e.target.value)}
+                        placeholder="Type step-by-step solution derivation or click '✨ AI Generate Explanation'..."
+                        className="w-full bg-white border border-[#E6DFD3] rounded-xl p-3 text-xs text-[#1C1917] focus:outline-none focus:border-[#173F3D] leading-relaxed font-sans"
+                      />
+
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingExplanationId(null);
+                            setInlineExplanationText('');
+                          }}
+                          className="px-3 py-1.5 text-xs text-[#78716C] hover:text-[#1C1917] bg-white border border-[#E6DFD3] rounded-lg transition-colors cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSaveInlineExplanation(q.id)}
+                          disabled={savingInlineExplanation}
+                          className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#173F3D] hover:bg-[#102B2A] disabled:opacity-50 rounded-lg shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all"
+                        >
+                          {savingInlineExplanation ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5" />
+                          )}
+                          <span>Save Explanation</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Normal View / Toggle View */
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedExplanationId(expandedExplanationId === q.id ? null : q.id)}
+                          className="text-[11px] text-[#173F3D] font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <HelpCircle className="w-3 h-3" />
+                          <span>
+                            {expandedExplanationId === q.id
+                              ? 'Hide Explanation'
+                              : q.explanation
+                              ? 'View Solution Explanation'
+                              : 'No Explanation (Click to add)'}
+                          </span>
+                        </button>
+
+                        {q.explanation && (
+                          <span className="text-[10px] text-[#78716C] bg-[#FAF7F2] px-2 py-0.5 rounded-full border border-[#E6DFD3]">
+                            Available
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingExplanationId(q.id);
+                            setInlineExplanationText(q.explanation || '');
+                            setExpandedExplanationId(q.id);
+                          }}
+                          className="px-2 py-1 text-[11px] font-semibold text-[#173F3D] hover:bg-[#FAF7F2] border border-[#E6DFD3] rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+                          title="Edit solution explanation"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                          <span>Edit Explanation</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingExplanationId(q.id);
+                            setInlineExplanationText(q.explanation || '');
+                            setExpandedExplanationId(q.id);
+                            handleInlineAIGenerate(q);
+                          }}
+                          className="px-2.5 py-1 text-[11px] font-semibold text-[#173F3D] bg-[#E8DFCF] hover:bg-[#DCD2C0] border border-[#DCD2C0] rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+                          title="Generate or enhance explanation with AI"
+                        >
+                          <Sparkles className="w-3 h-3 text-[#173F3D]" />
+                          <span>AI Explain</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Display expanded explanation if open and not currently editing */}
+                  {editingExplanationId !== q.id && expandedExplanationId === q.id && (
+                    <div className="mt-2.5 p-3.5 rounded-xl bg-[#FAF7F2] border border-[#E6DFD3] text-xs text-[#1C1917] leading-relaxed">
+                      <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-[#E6DFD3]">
+                        <span className="font-bold text-[11px] uppercase tracking-wider text-[#78716C] flex items-center gap-1.5">
+                          <BookOpen className="w-3 h-3 text-[#173F3D]" />
+                          <span>Solution & Derivation</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingExplanationId(q.id);
+                            setInlineExplanationText(q.explanation || '');
+                          }}
+                          className="text-[11px] text-[#173F3D] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                          <span>Edit</span>
+                        </button>
+                      </div>
+                      <div className="whitespace-pre-wrap font-sans text-xs text-[#2D2A26]">
+                        {q.explanation || 'No explanation provided yet. Click "Edit Explanation" or "AI Explain" above to generate one.'}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             ))
           )}
@@ -400,6 +598,17 @@ export default function AdminQuestionManager({ onSwitchToMockTests }) {
           </div>
         )}
       </div>
+
+      {/* Full Question Edit Modal */}
+      <QuestionModal
+        isOpen={isQuestionModalOpen}
+        onClose={() => {
+          setIsQuestionModalOpen(false);
+          setEditingQuestion(null);
+        }}
+        initialQuestion={editingQuestion}
+        onSave={handleSaveQuestion}
+      />
     </div>
   );
 }

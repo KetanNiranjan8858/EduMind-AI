@@ -431,6 +431,28 @@ export async function updateAdminQuestion(id, data) {
   return json;
 }
 
+export async function generateAdminExplanation(data) {
+  const res = await fetch(`${API_BASE}/admin/questions/generate-explanation`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.message || 'Failed to generate explanation');
+  return json;
+}
+
+export async function updateAdminQuestionExplanation(id, explanation) {
+  const res = await fetch(`${API_BASE}/admin/questions/${encodeURIComponent(id)}/explanation`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ explanation })
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.message || 'Failed to update explanation');
+  return json;
+}
+
 export async function deleteAdminQuestion(id) {
   const res = await fetch(`${API_BASE}/admin/questions/${encodeURIComponent(id)}`, {
     method: 'DELETE'

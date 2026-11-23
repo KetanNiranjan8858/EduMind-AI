@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Sparkles, CheckCircle2, AlertCircle, Save, Loader2, BookOpen } from 'lucide-react';
 import { GATE_SUBJECTS } from '../../data/curatedExams';
+import { generateAdminExplanation } from '../../utils/api';
 
 export default function QuestionModal({
   isOpen,
@@ -24,6 +25,7 @@ export default function QuestionModal({
   const [correctAnswer, setCorrectAnswer] = useState('A');
   const [explanation, setExplanation] = useState('');
   const [saving, setSaving] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
@@ -57,6 +59,37 @@ export default function QuestionModal({
   }, [initialQuestion, isOpen]);
 
   if (!isOpen) return null;
+
+  async function handleAIGenerateExplanation() {
+    if (!questionText.trim()) {
+      setErrorMsg('Please enter the question statement first before generating an AI explanation.');
+      return;
+    }
+    setIsGeneratingAI(true);
+    setErrorMsg('');
+    try {
+      const selectedSubjectObj = subjectsList.find((s) => s.id === subjectId);
+      const res = await generateAdminExplanation({
+        questionText: questionText.trim(),
+        options: {
+          A: optionA.trim(),
+          B: optionB.trim(),
+          C: optionC.trim(),
+          D: optionD.trim()
+        },
+        correctAnswer: correctAnswer.toUpperCase(),
+        subject: selectedSubjectObj?.name || subjectId,
+        topic: topic.trim() || selectedSubjectObj?.name
+      });
+      if (res.explanation) {
+        setExplanation(res.explanation);
+      }
+    } catch (err) {
+      setErrorMsg('Failed to generate AI explanation: ' + err.message);
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -284,12 +317,33 @@ export default function QuestionModal({
 
           {/* Explanation & Solution */}
           <div>
-            <label className="text-xs font-bold text-[#1C1917] mb-1.5 block">
-              Detailed Solution & Derivation Explanation
-            </label>
+            <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+              <label className="text-xs font-bold text-[#1C1917] block">
+                Detailed Solution & Derivation Explanation
+              </label>
+              <button
+                type="button"
+                onClick={handleAIGenerateExplanation}
+                disabled={isGeneratingAI || !questionText.trim()}
+                className="px-2.5 py-1 bg-[#173F3D] hover:bg-[#102B2A] text-white disabled:opacity-40 rounded-lg text-[11px] font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                title="Generate detailed step-by-step solution using Gemini AI"
+              >
+                {isGeneratingAI ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin text-amber-300" />
+                    <span>AI Generating...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3 h-3 text-amber-300" />
+                    <span>✨ AI Generate Explanation</span>
+                  </>
+                )}
+              </button>
+            </div>
             <textarea
-              rows={3}
-              placeholder="Explain how to solve this step-by-step, formulas used, and why the selected option is correct..."
+              rows={4}
+              placeholder="Explain how to solve this step-by-step, formulas used, and why the selected option is correct (or click ✨ AI Generate Explanation above)..."
               value={explanation}
               onChange={(e) => setExplanation(e.target.value)}
               className="w-full bg-[#FAF7F2] border border-[#E6DFD3] rounded-xl p-3.5 text-xs text-[#1C1917] focus:outline-none focus:border-[#173F3D] leading-relaxed font-sans"

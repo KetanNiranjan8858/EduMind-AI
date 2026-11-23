@@ -10,7 +10,9 @@ import {
   updateAdminQuestion,
   deleteAdminQuestion,
   getAdminTopics,
-  verifyAdminPasscode
+  verifyAdminPasscode,
+  generateAdminQuestionExplanation,
+  updateAdminQuestionExplanation
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -28,6 +30,8 @@ router.delete('/students/:userId', deleteStudent);
 router.get('/questions', getAdminQuestions);
 router.post('/questions', createAdminQuestion);
 router.post('/questions/bulk', bulkCreateAdminQuestions);
+router.post('/questions/generate-explanation', generateAdminQuestionExplanation);
+router.patch('/questions/:id/explanation', updateAdminQuestionExplanation);
 router.put('/questions/:id', updateAdminQuestion);
 router.delete('/questions/:id', deleteAdminQuestion);
 router.get('/topics', getAdminTopics);
