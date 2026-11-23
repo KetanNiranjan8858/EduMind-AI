@@ -20,6 +20,7 @@ export default function ExamPrepDashboard({
   currentUser,
   examHistory = [],
   onLaunchExam,
+  onReviewAttempt,
   onReturnToStudio,
   onRequireLogin
 }) {
@@ -546,10 +547,12 @@ export default function ExamPrepDashboard({
           contentWidth={prepMainWidth}
           isResizing={isResizing}
           tests={publishedTests}
+          attempts={gateAttempts}
           selectedSubjectIds={selectedSubjectIds}
           isAllSelected={isAllSelected}
           dbSubjects={dbSubjects}
           onLaunchExam={onLaunchExam}
+          onReviewAttempt={onReviewAttempt}
           onOpenGenerateModal={() => setShowGenerateModal(true)}
           onDeleteTest={handleDeleteTest}
         />

@@ -539,6 +539,37 @@ export default function App() {
     const targetCategory = isExamPrep ? 'examprep' : 'studio';
     const targetWorkspaceId = isExamPrep ? 'ws_gate_prep' : activeWorkspaceId;
 
+    // Optimistically update attempt history immediately so UI & metrics reflect the new score
+    const optimisticAttempt = {
+      id: `att_${Date.now()}`,
+      workspace_id: targetWorkspaceId,
+      user_id: currentUser?.id || null,
+      candidate_id: currentUser?.candidateId || null,
+      user_email: currentUser?.email || null,
+      user_name: currentUser?.name || null,
+      quiz_id: submissionData.quiz?.id || `quiz_${Date.now()}`,
+      quiz_title: submissionData.quiz?.quizTitle || submissionData.quiz?.title || 'Practice Assessment',
+      difficulty: submissionData.quiz?.difficulty || 'Hard',
+      total_questions: submissionData.quiz?.questions?.length || stats.totalQuestions,
+      attempted_count: stats.attemptedCount,
+      correct_count: stats.correctCount,
+      incorrect_count: stats.incorrectCount,
+      accuracy_percentage: stats.accuracyPercentage,
+      overall_percentage: stats.overallPercentage,
+      time_taken_seconds: submissionData.timeTakenSeconds,
+      submitted_at: new Date().toISOString(),
+      category: targetCategory,
+      quiz: submissionData.quiz,
+      userAnswers: submissionData.userAnswers,
+      questionTimes: submissionData.questionTimes
+    };
+
+    if (isExamPrep) {
+      setExamPrepHistory((prev) => [optimisticAttempt, ...(prev || []).filter((a) => a.id !== optimisticAttempt.id)]);
+    } else {
+      setStudioExamHistory((prev) => [optimisticAttempt, ...(prev || []).filter((a) => a.id !== optimisticAttempt.id)]);
+    }
+
     // Persist attempt in DB history strictly separated by category & workspace
     try {
       await saveExamAttempt({
@@ -700,6 +731,7 @@ export default function App() {
           currentUser={currentUser}
           examHistory={examPrepHistory}
           onLaunchExam={(quiz) => handleLaunchExam(quiz, 'examprep')}
+          onReviewAttempt={handleReviewPastAttempt}
           onReturnToStudio={handleReturnToStudio}
           onRequireLogin={() => {
             setLoginPromptMessage('Please sign in or register to attempt CBT exams and track scores.');

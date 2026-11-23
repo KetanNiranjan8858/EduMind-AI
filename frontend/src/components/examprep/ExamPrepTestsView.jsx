@@ -7,26 +7,48 @@ import {
   Layers,
   Trash2,
   Search,
-  Filter,
   Plus,
   Flame,
   CheckCircle2,
-  Calendar
+  Calendar,
+  BarChart3,
+  RotateCcw
 } from 'lucide-react';
+
+function formatDuration(seconds) {
+  if (!seconds || seconds <= 0) return '0s';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  if (m === 0) return `${s}s`;
+  return `${m}m ${s}s`;
+}
 
 export default function ExamPrepTestsView({
   contentWidth = 600,
   isResizing = false,
   tests = [],
+  attempts = [],
   selectedSubjectIds = ['all'],
   isAllSelected = true,
   dbSubjects = [],
   onLaunchExam,
+  onReviewAttempt,
   onOpenGenerateModal,
   onDeleteTest
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState('all'); // 'all' | 'Hard' | 'Medium' | 'Easy'
+
+  // Match test to its latest recorded attempt
+  function getLatestAttemptForTest(test) {
+    if (!attempts || attempts.length === 0) return null;
+    return attempts.find((a) => {
+      if (a.quiz_id && test.id && (a.quiz_id === test.id || a.quiz?.id === test.id)) return true;
+      if (a.quiz_title && test.title && a.quiz_title.trim().toLowerCase() === test.title.trim().toLowerCase()) return true;
+      if (a.quiz_title && test.title && (a.quiz_title.includes(test.title) || test.title.includes(a.quiz_title))) return true;
+      return false;
+    });
+  }
 
   // Filter tests matching selected subjects, difficulty, and search query
   const filteredTests = useMemo(() => {
@@ -105,7 +127,7 @@ export default function ExamPrepTestsView({
                 </span>
               </div>
               <p className="text-[11px] text-[#78716C] mt-0.5">
-                Practice benchmark assessments for <strong className="text-[#173F3D]">{activeSubjectTitle}</strong>. Click any test to start attempting.
+                Practice benchmark assessments for <strong className="text-[#173F3D]">{activeSubjectTitle}</strong>. Attempt tests or review your attempt analytics.
               </p>
             </div>
           </div>
@@ -209,16 +231,31 @@ export default function ExamPrepTestsView({
                 questions: parsedQuestions
               };
 
+              const latestAttempt = getLatestAttemptForTest(test);
+              const hasAttempted = Boolean(latestAttempt);
+
               return (
                 <div
                   key={test.id}
                   onClick={() => onLaunchExam(quizPayload)}
                   className="bg-white rounded-2xl border border-[#E6DFD3] p-5 shadow-xs hover:shadow-md hover:border-[#173F3D]/50 transition-all cursor-pointer group flex flex-col justify-between space-y-4"
                 >
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     {/* Top Badges Row */}
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* Attempted Status Badge */}
+                        {hasAttempted ? (
+                          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>Attempted</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#FAF7F2] text-[#78716C] border border-[#E6DFD3]">
+                            Unattempted
+                          </span>
+                        )}
+
                         <span
                           className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${
                             diff.toLowerCase() === 'hard'
@@ -232,12 +269,12 @@ export default function ExamPrepTestsView({
                         </span>
 
                         <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#FAF7F2] text-[#78716C] border border-[#E6DFD3]">
-                          {totalQ} Questions
+                          {totalQ} Qs
                         </span>
 
                         <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#FAF7F2] text-[#78716C] border border-[#E6DFD3] flex items-center gap-1">
                           <Clock className="w-3 h-3 text-[#173F3D]" />
-                          <span>{timeLimit} Mins</span>
+                          <span>{timeLimit}m</span>
                         </span>
                       </div>
 
@@ -268,26 +305,76 @@ export default function ExamPrepTestsView({
                         Subjects: {test.subject_ids}
                       </p>
                     )}
+
+                    {/* Latest Attempt Performance Banner */}
+                    {hasAttempted && (
+                      <div className="p-2.5 rounded-xl bg-[#FAF7F2] border border-[#E6DFD3] flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[#78716C]">Latest Score:</span>
+                          <strong className="text-[#173F3D] font-bold">
+                            {latestAttempt.correct_count} / {latestAttempt.total_questions} ({latestAttempt.accuracy_percentage}%)
+                          </strong>
+                        </div>
+                        <span className="text-[10px] text-[#78716C] font-mono">
+                          Time: {formatDuration(latestAttempt.time_taken_seconds)}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Card Bottom CTA */}
-                  <div className="pt-3 border-t border-[#E6DFD3] flex items-center justify-between">
+                  {/* Card Bottom CTA Row */}
+                  <div className="pt-3 border-t border-[#E6DFD3] flex items-center justify-between gap-2 flex-wrap">
                     <span className="text-[11px] text-[#78716C] flex items-center gap-1">
                       <Calendar className="w-3 h-3 text-[#78716C]" />
-                      <span>GATE Benchmark Mock</span>
+                      <span>{hasAttempted ? 'Completed' : 'Ready to Attempt'}</span>
                     </span>
 
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onLaunchExam(quizPayload);
-                      }}
-                      className="px-3.5 py-1.5 bg-[#173F3D] group-hover:bg-[#102B2A] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
-                    >
-                      <Play className="w-3.5 h-3.5 fill-current" />
-                      <span>Attempt Test</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {hasAttempted ? (
+                        <>
+                          {/* Dedicated Analytics Option for Attempted Test */}
+                          {onReviewAttempt && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onReviewAttempt(latestAttempt);
+                              }}
+                              className="px-3.5 py-1.5 bg-[#173F3D] hover:bg-[#102B2A] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                              title="View performance analytics and review question solutions"
+                            >
+                              <BarChart3 className="w-3.5 h-3.5 text-[#FAF7F2]" />
+                              <span>Analytics</span>
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onLaunchExam(quizPayload);
+                            }}
+                            className="px-3 py-1.5 bg-white hover:bg-[#FAF7F2] text-[#173F3D] border border-[#DCD2C0] rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                            title="Retake this test"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Retake</span>
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onLaunchExam(quizPayload);
+                          }}
+                          className="px-3.5 py-1.5 bg-[#173F3D] hover:bg-[#102B2A] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                          <span>Attempt Test</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
