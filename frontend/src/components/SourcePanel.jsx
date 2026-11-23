@@ -517,26 +517,6 @@ export default function SourcePanel({
         )}
       </div>
 
-      {/* Admin Quick Entry in Left Sidebar (Solid Deep Teal Card with Staff Badge matching mockup) */}
-      <div className="p-3 border-t border-[#E6DFD3] bg-white shrink-0">
-        <button
-          type="button"
-          onClick={onOpenAdmin}
-          className="w-full py-2.5 px-3.5 bg-[#173F3D] hover:bg-[#102B2A] rounded-xl text-xs font-bold text-white flex items-center justify-between shadow-sm cursor-pointer transition-all group"
-          title="Access Institutional Admin Portal"
-        >
-          <div className="flex items-center gap-2.5">
-            <div className="w-4 h-4 rounded-full border border-white/50 flex items-center justify-center">
-              <Shield className="w-2.5 h-2.5 text-white" />
-            </div>
-            <span>Admin Portal</span>
-          </div>
-          <span className="text-[10px] tracking-wider uppercase bg-[#E8DFCF] text-[#173F3D] px-2.5 py-0.5 rounded-full font-bold">
-            Staff
-          </span>
-        </button>
-      </div>
-
       {/* Context Menu */}
       {contextMenu && (
         <ContextMenu
