@@ -141,7 +141,7 @@ export default function AdminQuestionManager({ onSwitchToMockTests }) {
   const totalPages = Math.max(1, Math.ceil(totalQuestions / limit));
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-[#F4EFE6] overflow-y-auto p-6 space-y-6">
+    <div className="min-h-full flex flex-col min-w-0 bg-[#F4EFE6] p-6 space-y-6">
       {/* Header & Primary Action Buttons */}
       <div className="p-5 rounded-2xl bg-white border border-[#E6DFD3] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

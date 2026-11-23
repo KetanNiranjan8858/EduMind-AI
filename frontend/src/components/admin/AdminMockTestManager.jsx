@@ -120,7 +120,7 @@ export default function AdminMockTestManager({ onLaunchExam }) {
   }
 
   return (
-    <div className="h-full flex flex-col bg-[#F4EFE6] overflow-y-auto p-6 space-y-6">
+    <div className="min-h-full flex flex-col min-w-0 bg-[#F4EFE6] p-6 space-y-6">
       {/* Header Banner */}
       <div className="bg-white rounded-2xl border border-[#E6DFD3] p-5 shadow-xs flex items-center justify-between">
         <div className="flex items-center gap-3">

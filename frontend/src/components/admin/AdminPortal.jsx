@@ -159,7 +159,7 @@ export default function AdminPortal({
         </header>
 
         {/* Content View */}
-        <main className="flex-1 overflow-hidden">
+        <main className="flex-1 min-h-0 overflow-y-auto bg-[#F4EFE6]">
           {activeTab === 'questions' ? (
             <AdminQuestionManager onSwitchToMockTests={() => setActiveTab('mocktests')} />
           ) : (
