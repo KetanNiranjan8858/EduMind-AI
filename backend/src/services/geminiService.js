@@ -364,7 +364,7 @@ CRITICAL MANDATORY INSTRUCTIONS:
 }
 
 /**
- * Generate a comprehensive step-by-step academic explanation for a question using Gemini AI
+ * Generate a concise step-by-step academic explanation (strictly 5 to 10 lines maximum) using Gemini AI
  */
 export async function generateQuestionExplanation({
   questionText = '',
@@ -380,13 +380,13 @@ export async function generateQuestionExplanation({
 
   if (!ai) {
     return {
-      explanation: `Option (${correctAnswer}) is correct.\n\nStep-by-step Analysis:\n1. Core Principle: The question evaluates key principles of ${topic || subject || 'the syllabus'}.\n2. Evaluation of Options:\n- Option (${correctAnswer}) adheres to the standard theoretical definitions and algorithmic invariants.\n- Other options introduce inconsistent constraints or invalid edge-case assumptions.\n3. Conclusion: Option (${correctAnswer}) is the correct choice.`
+      explanation: `Option (${correctAnswer}) is correct.\n1. Principle: Tests fundamental concepts of ${topic || subject || 'the syllabus'}.\n2. Derivation: Evaluating constraints confirms Option (${correctAnswer}) is accurate.\n3. Analysis: Alternate options violate required invariants.\n4. Conclusion: Option (${correctAnswer}) is verified correct.`
     };
   }
 
   try {
     const prompt = `You are an elite professor and expert GATE examination instructor.
-Generate a comprehensive, rigorous, and clear step-by-step mathematical/conceptual solution and explanation for the following multiple-choice question.
+Generate a high-yield, compact, step-by-step solution and explanation for the following multiple-choice question.
 
 Subject: ${subject || 'Computer Science & Information Technology'}
 Topic: ${topic || 'General'}
@@ -398,12 +398,16 @@ ${formattedOptions}
 
 Correct Answer: Option (${correctAnswer})
 
-INSTRUCTIONS:
-1. Explain step-by-step why Option (${correctAnswer}) is conceptually, mathematically, or algorithmically correct.
-2. Provide all key formulas, step-by-step calculations, truth tables, or state transition derivations where relevant.
-3. Briefly mention why the distractor options are incorrect.
-4. Do NOT include conversational filler, greetings, or sign-offs (no "Sure!", "Here is the explanation:", "Hope this helps"). Start directly with the core solution or analysis.
-5. Format cleanly using compact Markdown.`;
+CRITICAL MANDATORY INSTRUCTIONS:
+1. STRICT LENGTH CONSTRAINT: The entire explanation MUST BE BETWEEN 5 AND 10 LINES ONLY (10 lines maximum).
+2. DO NOT exceed 10 lines under any circumstance.
+3. Be direct, precise, and high-yield.
+4. Structure (strictly 5 to 10 lines total):
+   - Line 1: State the core formula, definition, or theorem.
+   - Lines 2-6: Step-by-step calculation or logical derivation showing why Option (${correctAnswer}) is correct.
+   - Lines 7-8: Brief 1-sentence note stating why distractors are incorrect.
+   - Final line: Concluding answer verification.
+5. NO greetings, NO filler, and NO introductory phrases (e.g. NEVER say "Sure", "Here is the explanation"). Start directly with Line 1.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -413,8 +417,8 @@ INSTRUCTIONS:
       }
     });
 
-    let explanation = response.text?.trim() || `Option (${correctAnswer}) is confirmed correct.`;
-    explanation = explanation
+    let raw = response.text?.trim() || `Option (${correctAnswer}) is confirmed correct.`;
+    raw = raw
       .replace(/^(#{1,6}\s*)\*\*(.+?)\*\*/gm, '$1$2')
       .replace(/^(\s*)\*\*(.+?)\*\*(\s*:?)\s*$/gm, '$1$2$3')
       .replace(/^(\s*[-*•]\s*)\*\*(.+?)\*\*(\s*:?)/gm, '$1$2$3')
@@ -422,11 +426,15 @@ INSTRUCTIONS:
       .replace(/^(\s*)\*\*(.+?):?\*\*:\s*/gm, '$1$2: ')
       .replace(/^(\s*)\*\*(.+?):\*\*\s*/gm, '$1$2: ');
 
+    // Post-process to guarantee at most 10 lines
+    const lines = raw.split('\n').filter(l => l.trim().length > 0);
+    const explanation = lines.length > 10 ? lines.slice(0, 10).join('\n') : lines.join('\n');
+
     return { explanation };
   } catch (err) {
     console.error('[Gemini Explanation] Error generating explanation:', err);
     return {
-      explanation: `Option (${correctAnswer}) is correct.\n\nConceptual Summary (${topic || subject}):\nStandard principles dictate that Option (${correctAnswer}) satisfies all specified invariants.`
+      explanation: `Option (${correctAnswer}) is correct.\n1. Principle: Evaluates fundamental invariants of ${topic || subject}.\n2. Derivation: Applying standard formulas confirms Option (${correctAnswer}) matches boundary constraints.\n3. Analysis: Distractor options violate time/space bounds or parity conditions.\n4. Conclusion: Option (${correctAnswer}) is verified correct.`
     };
   }
 }

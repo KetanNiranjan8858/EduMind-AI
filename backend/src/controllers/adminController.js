@@ -305,6 +305,8 @@ export async function getAdminQuestions(req, res) {
       subjectName: q.subject_name,
       topic: q.topic,
       difficulty: q.difficulty,
+      marks: q.marks !== undefined ? Number(q.marks) : (q.difficulty === 'Hard' ? 2 : 1),
+      negativeMarks: q.negative_marks !== undefined ? Number(q.negative_marks) : (Number(q.marks) === 2 || q.difficulty === 'Hard' ? 0.66 : 0.33),
       question: q.question_text,
       options: {
         A: q.option_a,
@@ -482,6 +484,9 @@ export async function updateAdminQuestion(req, res) {
       subjectName,
       topic,
       difficulty,
+      marks,
+      negativeMarks,
+      negative_marks,
       questionText,
       optionA,
       optionB,
@@ -493,10 +498,13 @@ export async function updateAdminQuestion(req, res) {
 
     const subMeta = GATE_SUBJECTS_METADATA.find((s) => s.id === subjectId);
     const finalSubjectName = subjectName || subMeta?.name || subjectId;
+    const finalMarks = marks !== undefined ? Number(marks) : 1;
+    const finalNegMarks = negativeMarks !== undefined ? Number(negativeMarks) : (negative_marks !== undefined ? Number(negative_marks) : (finalMarks === 2 ? 0.66 : 0.33));
 
     await db.query(
       `UPDATE exam_prep_questions SET
         subject_id = ?, subject_name = ?, topic = ?, difficulty = ?,
+        marks = ?, negative_marks = ?,
         question_text = ?, option_a = ?, option_b = ?, option_c = ?, option_d = ?,
         correct_answer = ?, explanation = ?
       WHERE id = ?`,
@@ -505,6 +513,8 @@ export async function updateAdminQuestion(req, res) {
         finalSubjectName,
         topic,
         difficulty,
+        finalMarks,
+        finalNegMarks,
         questionText,
         optionA,
         optionB,

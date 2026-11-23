@@ -166,6 +166,8 @@ CREATE TABLE IF NOT EXISTS exam_prep_questions (
   subject_name VARCHAR(150) NOT NULL,
   topic VARCHAR(150),
   difficulty VARCHAR(50) DEFAULT 'Hard',
+  marks DECIMAL(4, 2) DEFAULT 1.00,
+  negative_marks DECIMAL(4, 2) DEFAULT 0.33,
   question_text LONGTEXT NOT NULL,
   option_a TEXT NOT NULL,
   option_b TEXT NOT NULL,

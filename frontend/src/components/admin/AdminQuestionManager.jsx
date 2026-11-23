@@ -350,6 +350,18 @@ export default function AdminQuestionManager({ onSwitchToMockTests }) {
                     >
                       {q.difficulty}
                     </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200">
+                      +{q.marks || 1} mark{Number(q.marks) > 1 ? 's' : ''}
+                    </span>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                        Number(q.negativeMarks) > 0
+                          ? 'bg-rose-50 text-rose-700 border-rose-200'
+                          : 'bg-zinc-50 text-zinc-600 border-zinc-200'
+                      }`}
+                    >
+                      Neg: -{q.negativeMarks !== undefined ? q.negativeMarks : 0.33}
+                    </span>
                     <span className="text-[10px] font-mono text-[#78716C]">
                       ID: {q.id}
                     </span>
@@ -429,17 +441,17 @@ export default function AdminQuestionManager({ onSwitchToMockTests }) {
                           onClick={() => handleInlineAIGenerate(q)}
                           disabled={isGeneratingInlineAI}
                           className="px-2.5 py-1 bg-[#173F3D] hover:bg-[#102B2A] text-white disabled:opacity-50 rounded-lg text-[11px] font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                          title="Generate or enhance explanation using Gemini AI"
+                          title="Generate concise 5-10 line explanation using Gemini AI"
                         >
                           {isGeneratingInlineAI ? (
                             <>
                               <Loader2 className="w-3 h-3 animate-spin text-amber-300" />
-                              <span>AI Generating...</span>
+                              <span>AI Generating (5-10 lines)...</span>
                             </>
                           ) : (
                             <>
                               <Sparkles className="w-3 h-3 text-amber-300" />
-                              <span>✨ AI Generate Explanation</span>
+                              <span>✨ AI Generate (5-10 lines max)</span>
                             </>
                           )}
                         </button>
@@ -449,7 +461,7 @@ export default function AdminQuestionManager({ onSwitchToMockTests }) {
                         rows={4}
                         value={inlineExplanationText}
                         onChange={(e) => setInlineExplanationText(e.target.value)}
-                        placeholder="Type step-by-step solution derivation or click '✨ AI Generate Explanation'..."
+                        placeholder="Type step-by-step solution derivation or click '✨ AI Generate (5-10 lines max)'..."
                         className="w-full bg-white border border-[#E6DFD3] rounded-xl p-3 text-xs text-[#1C1917] focus:outline-none focus:border-[#173F3D] leading-relaxed font-sans"
                       />
 

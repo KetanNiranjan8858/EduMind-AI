@@ -17,6 +17,8 @@ export default function QuestionModal({
   const [subjectId, setSubjectId] = useState('math');
   const [topic, setTopic] = useState('');
   const [difficulty, setDifficulty] = useState('Hard');
+  const [marks, setMarks] = useState(1);
+  const [negativeMarks, setNegativeMarks] = useState(0.33);
   const [questionText, setQuestionText] = useState('');
   const [optionA, setOptionA] = useState('');
   const [optionB, setOptionB] = useState('');
@@ -34,6 +36,14 @@ export default function QuestionModal({
       setSubjectId(initialQuestion.subjectId || 'math');
       setTopic(initialQuestion.topic || '');
       setDifficulty(initialQuestion.difficulty || 'Hard');
+      setMarks(initialQuestion.marks !== undefined ? initialQuestion.marks : 1);
+      setNegativeMarks(
+        initialQuestion.negativeMarks !== undefined
+          ? initialQuestion.negativeMarks
+          : initialQuestion.negative_marks !== undefined
+          ? initialQuestion.negative_marks
+          : 0.33
+      );
       setQuestionText(initialQuestion.question || initialQuestion.question_text || '');
       setOptionA(initialQuestion.options?.A || initialQuestion.option_a || '');
       setOptionB(initialQuestion.options?.B || initialQuestion.option_b || '');
@@ -47,6 +57,8 @@ export default function QuestionModal({
       setSubjectId('math');
       setTopic('');
       setDifficulty('Hard');
+      setMarks(1);
+      setNegativeMarks(0.33);
       setQuestionText('');
       setOptionA('');
       setOptionB('');
@@ -117,6 +129,8 @@ export default function QuestionModal({
         subjectName: selectedSubjectObj?.name || subjectId,
         topic: topic.trim() || selectedSubjectObj?.name || 'General',
         difficulty,
+        marks: Number(marks) || 1,
+        negativeMarks: Number(negativeMarks) >= 0 ? Number(negativeMarks) : 0,
         questionText: questionText.trim(),
         optionA: optionA.trim(),
         optionB: optionB.trim(),
@@ -244,6 +258,83 @@ export default function QuestionModal({
             </div>
           </div>
 
+          {/* Row 3: Question Marks & Negative Marking Scheme */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-[#FAF7F2] border border-[#E6DFD3]">
+            {/* Positive Marks */}
+            <div>
+              <label className="text-xs font-bold text-[#1C1917] mb-1.5 flex items-center justify-between">
+                <span>Awarded Marks (+Score)</span>
+                <span className="text-[10px] text-[#78716C]">Score for correct response</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {[1, 2].map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => {
+                      setMarks(m);
+                      if (m === 1 && (Number(negativeMarks) === 0.66 || negativeMarks === '0.66')) {
+                        setNegativeMarks(0.33);
+                      } else if (m === 2 && (Number(negativeMarks) === 0.33 || negativeMarks === '0.33')) {
+                        setNegativeMarks(0.66);
+                      }
+                    }}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center justify-center gap-1.5 ${
+                      Number(marks) === m
+                        ? 'bg-[#173F3D] border-[#173F3D] text-white shadow-2xs'
+                        : 'bg-white border-[#E6DFD3] text-[#78716C] hover:text-[#1C1917]'
+                    }`}
+                  >
+                    <span>+{m} Mark{m > 1 ? 's' : ''}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Negative Marking Deduction */}
+            <div>
+              <label className="text-xs font-bold text-[#1C1917] mb-1.5 flex items-center justify-between">
+                <span>Negative Marking Penalty</span>
+                <span className="text-[10px] text-rose-600 font-semibold">Deduction on wrong choice</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <div className="grid grid-cols-3 gap-1.5 flex-1">
+                  {[
+                    { label: '-0.33 (1/3)', val: 0.33 },
+                    { label: '-0.66 (2/3)', val: 0.66 },
+                    { label: '0 (None)', val: 0 }
+                  ].map(({ label, val }) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setNegativeMarks(val)}
+                      className={`py-2 px-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer border text-center ${
+                        Number(negativeMarks) === val
+                          ? 'bg-rose-50 border-rose-300 text-rose-700 shadow-2xs font-extrabold'
+                          : 'bg-white border-[#E6DFD3] text-[#78716C] hover:text-[#1C1917]'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="w-20 shrink-0">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="2"
+                    placeholder="Penalty"
+                    value={negativeMarks}
+                    onChange={(e) => setNegativeMarks(e.target.value)}
+                    className="w-full bg-white border border-[#E6DFD3] rounded-xl px-2.5 py-2 text-xs text-[#1C1917] font-mono font-bold text-center focus:outline-none focus:border-[#173F3D]"
+                    title="Exact negative mark penalty (e.g. 0.33, 0.66, 0)"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Question Text */}
           <div>
             <label className="text-xs font-bold text-[#1C1917] mb-1.5 block">
@@ -326,24 +417,24 @@ export default function QuestionModal({
                 onClick={handleAIGenerateExplanation}
                 disabled={isGeneratingAI || !questionText.trim()}
                 className="px-2.5 py-1 bg-[#173F3D] hover:bg-[#102B2A] text-white disabled:opacity-40 rounded-lg text-[11px] font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                title="Generate detailed step-by-step solution using Gemini AI"
+                title="Generate concise 5-10 line step-by-step solution using Gemini AI"
               >
                 {isGeneratingAI ? (
                   <>
                     <Loader2 className="w-3 h-3 animate-spin text-amber-300" />
-                    <span>AI Generating...</span>
+                    <span>AI Generating (5-10 lines)...</span>
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-3 h-3 text-amber-300" />
-                    <span>✨ AI Generate Explanation</span>
+                    <span>✨ AI Generate (5-10 lines max)</span>
                   </>
                 )}
               </button>
             </div>
             <textarea
               rows={4}
-              placeholder="Explain how to solve this step-by-step, formulas used, and why the selected option is correct (or click ✨ AI Generate Explanation above)..."
+              placeholder="Enter solution derivation (or click '✨ AI Generate (5-10 lines max)' for a concise 5 to 10 line explanation)..."
               value={explanation}
               onChange={(e) => setExplanation(e.target.value)}
               className="w-full bg-[#FAF7F2] border border-[#E6DFD3] rounded-xl p-3.5 text-xs text-[#1C1917] focus:outline-none focus:border-[#173F3D] leading-relaxed font-sans"
