@@ -6,16 +6,25 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Local fallback store path
-const fallbackDir = path.resolve(__dirname, '../../data');
-const fallbackFile = path.join(fallbackDir, 'db.json');
-
-if (!fs.existsSync(fallbackDir)) {
-  fs.mkdirSync(fallbackDir, { recursive: true });
+// Local fallback store paths (Dedicated Physical Databases)
+const dataDir = path.resolve(__dirname, '../../data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
 }
 
-// Initial default database structure for fallback
-const initialStore = {
+// 1. Landing Page & Central Studio Database File
+export const landingDbFile = path.join(dataDir, 'landing_studio_db.json');
+
+// 2. Exam Prep Dashboard Database File
+export const examPrepDbFile = path.join(dataDir, 'exam_prep_db.json');
+
+// Legacy fallback path (for automatic migration)
+const legacyFile = path.join(dataDir, 'db.json');
+
+// Default schemas for initial setup
+const initialLandingStore = {
+  database_name: 'LandingStudioDB',
+  description: 'Dedicated database for EduMind AI Landing Page, Central Studio, and User Workspaces',
   users: [],
   workspaces: [
     {
@@ -31,54 +40,147 @@ const initialStore = {
   sources: [],
   quizzes: [],
   exam_attempts: [],
-  chat_messages: [],
-  exam_prep_questions: [],
-  exam_prep_tests: []
+  chat_messages: []
 };
 
-// Migrate legacy sources.json if it exists
-const legacySourcesFile = path.join(fallbackDir, 'sources.json');
-if (fs.existsSync(legacySourcesFile) && !fs.existsSync(fallbackFile)) {
-  try {
-    const legacy = JSON.parse(fs.readFileSync(legacySourcesFile, 'utf8'));
-    initialStore.sources = legacy.map(s => ({ ...s, workspace_id: 'ws_default' }));
-  } catch {}
+const initialExamPrepStore = {
+  database_name: 'ExamPrepDB',
+  description: 'Dedicated database for Official Exam Prep Hub, Curated GATE Question Bank, and Mock Assessments',
+  users: [],
+  exam_prep_questions: [],
+  exam_prep_tests: [],
+  exam_attempts: [],
+  chat_messages: []
+};
+
+/**
+ * Migration & Initialization: Split legacy db.json into two dedicated databases
+ */
+function ensureDatabasesInitialized() {
+  let legacyData = null;
+  if (fs.existsSync(legacyFile)) {
+    try {
+      legacyData = JSON.parse(fs.readFileSync(legacyFile, 'utf8'));
+    } catch (e) {
+      console.warn('[EduMind DB] Could not parse legacy db.json:', e.message);
+    }
+  }
+
+  // Initialize Landing Page Database
+  if (!fs.existsSync(landingDbFile)) {
+    if (legacyData) {
+      const landingData = {
+        database_name: 'LandingStudioDB',
+        description: 'Dedicated database for EduMind AI Landing Page, Central Studio, and User Workspaces',
+        users: legacyData.users || [],
+        workspaces: legacyData.workspaces && legacyData.workspaces.length > 0 ? legacyData.workspaces : initialLandingStore.workspaces,
+        sources: legacyData.sources || [],
+        quizzes: legacyData.quizzes || [],
+        exam_attempts: (legacyData.exam_attempts || []).filter(
+          a => a.category !== 'examprep' && a.workspace_id !== 'ws_gate_prep'
+        ),
+        chat_messages: (legacyData.chat_messages || []).filter(
+          c => c.workspace_id !== 'ws_gate_prep'
+        )
+      };
+      fs.writeFileSync(landingDbFile, JSON.stringify(landingData, null, 2), 'utf8');
+      console.log('[EduMind DB] Migrated landing page data to landing_studio_db.json');
+    } else {
+      fs.writeFileSync(landingDbFile, JSON.stringify(initialLandingStore, null, 2), 'utf8');
+    }
+  }
+
+  // Initialize Exam Prep Dashboard Database
+  if (!fs.existsSync(examPrepDbFile)) {
+    if (legacyData) {
+      const examPrepData = {
+        database_name: 'ExamPrepDB',
+        description: 'Dedicated database for Official Exam Prep Hub, Curated GATE Question Bank, and Mock Assessments',
+        users: legacyData.users || [],
+        exam_prep_questions: legacyData.exam_prep_questions || [],
+        exam_prep_tests: legacyData.exam_prep_tests || [],
+        exam_attempts: (legacyData.exam_attempts || []).filter(
+          a => a.category === 'examprep' || a.workspace_id === 'ws_gate_prep'
+        ),
+        chat_messages: (legacyData.chat_messages || []).filter(
+          c => c.workspace_id === 'ws_gate_prep'
+        )
+      };
+      fs.writeFileSync(examPrepDbFile, JSON.stringify(examPrepData, null, 2), 'utf8');
+      console.log('[EduMind DB] Migrated exam prep data to exam_prep_db.json');
+    } else {
+      fs.writeFileSync(examPrepDbFile, JSON.stringify(initialExamPrepStore, null, 2), 'utf8');
+    }
+  }
 }
 
-if (!fs.existsSync(fallbackFile)) {
-  fs.writeFileSync(fallbackFile, JSON.stringify(initialStore, null, 2), 'utf8');
+ensureDatabasesInitialized();
+
+// Database Accessors for Landing Page
+export function readLandingStore() {
+  try {
+    const raw = fs.readFileSync(landingDbFile, 'utf8');
+    const data = JSON.parse(raw);
+    if (!data.users) data.users = [];
+    if (!data.workspaces) data.workspaces = initialLandingStore.workspaces;
+    if (!data.sources) data.sources = [];
+    if (!data.quizzes) data.quizzes = [];
+    if (!data.exam_attempts) data.exam_attempts = [];
+    if (!data.chat_messages) data.chat_messages = [];
+    return data;
+  } catch (err) {
+    console.error('[EduMind Landing DB] Error reading store, returning initial:', err.message);
+    return { ...initialLandingStore };
+  }
+}
+
+export function writeLandingStore(data) {
+  try {
+    fs.writeFileSync(landingDbFile, JSON.stringify(data, null, 2), 'utf8');
+  } catch (err) {
+    console.error('[EduMind Landing DB] Error writing store:', err);
+  }
+}
+
+// Database Accessors for Exam Prep Dashboard
+export function readExamPrepStore() {
+  try {
+    const raw = fs.readFileSync(examPrepDbFile, 'utf8');
+    const data = JSON.parse(raw);
+    if (!data.users) data.users = [];
+    if (!data.exam_prep_questions) data.exam_prep_questions = [];
+    if (!data.exam_prep_tests) data.exam_prep_tests = [];
+    if (!data.exam_attempts) data.exam_attempts = [];
+    if (!data.chat_messages) data.chat_messages = [];
+    return data;
+  } catch (err) {
+    console.error('[EduMind Exam Prep DB] Error reading store, returning initial:', err.message);
+    return { ...initialExamPrepStore };
+  }
+}
+
+export function writeExamPrepStore(data) {
+  try {
+    fs.writeFileSync(examPrepDbFile, JSON.stringify(data, null, 2), 'utf8');
+  } catch (err) {
+    console.error('[EduMind Exam Prep DB] Error writing store:', err);
+  }
+}
+
+// Backward-compatibility accessors
+export function readFallback() {
+  return readLandingStore();
+}
+
+export function writeFallback(data) {
+  return writeLandingStore(data);
 }
 
 let pool = null;
 let useFallback = false;
 
-export function readFallback() {
-  try {
-    const raw = fs.readFileSync(fallbackFile, 'utf8');
-    const data = JSON.parse(raw);
-    if (!data.users) data.users = [];
-    if (!data.exam_prep_questions) data.exam_prep_questions = [];
-    if (!data.exam_prep_tests) data.exam_prep_tests = [];
-    if (!data.workspaces || data.workspaces.length === 0) {
-      data.workspaces = initialStore.workspaces;
-      writeFallback(data);
-    }
-    return data;
-  } catch {
-    return { ...initialStore };
-  }
-}
-
-export function writeFallback(data) {
-  try {
-    fs.writeFileSync(fallbackFile, JSON.stringify(data, null, 2), 'utf8');
-  } catch (err) {
-    console.error('[EduMind DB Fallback] Error writing store:', err);
-  }
-}
-
 /**
- * Initialize Database Connection and run Schema
+ * Initialize Database Connection
  */
 export async function initDB() {
   const host = process.env.DB_HOST || 'localhost';
@@ -111,7 +213,7 @@ export async function initDB() {
       connectTimeout: 3000
     });
 
-    // 1. Workspaces
+    // 1. Workspaces (Landing Page)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS workspaces (
         id VARCHAR(64) PRIMARY KEY,
@@ -130,12 +232,12 @@ export async function initDB() {
     const [existingWs] = await pool.query('SELECT id FROM workspaces LIMIT 1');
     if (!existingWs || existingWs.length === 0) {
       await pool.query(
-        'INSERT INTO workspaces (id, name, description, color, icon, user_id) VALUES (?, ?, ?, ?, ?, ?)',
-        ['ws_default', 'General Study Workspace', 'Default study space for documents, notes, and assessments', 'indigo', 'book', null]
+        'INSERT INTO workspaces (id, name, description, color, icon) VALUES (?, ?, ?, ?, ?)',
+        ['ws_default', 'General Study Workspace', 'Default study space for documents, notes, and assessments', 'indigo', 'book']
       );
     }
 
-    // 2. Sources (Tied to User ID)
+    // 2. Sources (Landing Page)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS sources (
         id VARCHAR(64) PRIMARY KEY,
@@ -156,7 +258,7 @@ export async function initDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
-    // 3. Quizzes
+    // 3. Quizzes (Landing Page Studio)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS quizzes (
         id VARCHAR(64) PRIMARY KEY,
@@ -173,11 +275,12 @@ export async function initDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
-    // 4. Exam Attempts (Linked to workspace and candidate user ID)
+    // 4. Exam Attempts (Supports Category Column for Strict Separation)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS exam_attempts (
         id VARCHAR(64) PRIMARY KEY,
         workspace_id VARCHAR(64) NOT NULL,
+        category VARCHAR(50) DEFAULT 'studio',
         user_id VARCHAR(64) DEFAULT NULL,
         candidate_id VARCHAR(64) DEFAULT NULL,
         user_email VARCHAR(150) DEFAULT NULL,
@@ -197,13 +300,14 @@ export async function initDB() {
         question_times_json LONGTEXT NOT NULL,
         submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_workspace_attempts (workspace_id),
+        INDEX idx_attempt_category (category),
         INDEX idx_user_attempts (user_id),
         INDEX idx_candidate_attempts (candidate_id),
         INDEX idx_submitted_at (submitted_at DESC)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
-    // 5. Chat Messages (Tied to User ID)
+    // 5. Chat Messages
     await pool.query(`
       CREATE TABLE IF NOT EXISTS chat_messages (
         id VARCHAR(64) PRIMARY KEY,
@@ -217,7 +321,7 @@ export async function initDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
-    // 6. Users & Authentication (Password protected + OTP)
+    // 6. Users & Authentication
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id VARCHAR(64) PRIMARY KEY,
@@ -232,11 +336,12 @@ export async function initDB() {
         otp_expires_at TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        INDEX idx_user_email (email)
+        INDEX idx_user_email (email),
+        INDEX idx_candidate_id (candidate_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
-    // 7. Exam Prep Question Bank (Dedicated Database for Official Exam Prep / GATE CS/IT)
+    // 7. Exam Prep Question Bank (Exam Prep Dashboard)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS exam_prep_questions (
         id VARCHAR(64) PRIMARY KEY,
@@ -258,7 +363,7 @@ export async function initDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
-    // 8. Exam Prep Tests (Generated Assessments from Database Bank)
+    // 8. Exam Prep Tests (Exam Prep Dashboard)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS exam_prep_tests (
         id VARCHAR(64) PRIMARY KEY,
@@ -275,19 +380,21 @@ export async function initDB() {
     `);
 
     useFallback = false;
-    console.log(`[EduMind DB] Connected to MySQL (${database}) with complete relational schema.`);
+    console.log(`[EduMind DB] Connected to MySQL (${database}) with separated schema.`);
   } catch (err) {
     useFallback = true;
     console.warn(`\n======================================================`);
     console.warn(`[EduMind DB] MySQL connection not available (${err.message}).`);
-    console.warn(`[EduMind DB] Resilient multi-workspace JSON storage active (${fallbackFile}).`);
-    console.warn(`[EduMind DB] Workspaces, sources, exam history & chat are fully persisted.`);
+    console.warn(`[EduMind DB] Dedicated physical JSON databases active:`);
+    console.warn(`  1. Landing Page DB:   ${landingDbFile}`);
+    console.warn(`  2. Exam Prep Page DB: ${examPrepDbFile}`);
+    console.warn(`[EduMind DB] Workspaces, sources, exam prep questions & history are fully separated and persisted.`);
     console.warn(`======================================================\n`);
   }
 }
 
 /**
- * DB query runner with seamless fallback support
+ * Intelligent DB query runner with dedicated store routing
  */
 export async function query(sql, params = []) {
   if (!useFallback && pool) {
@@ -295,17 +402,18 @@ export async function query(sql, params = []) {
       const [results] = await pool.query(sql, params);
       return results;
     } catch (err) {
-      console.error('[EduMind DB] MySQL error, routing to fallback:', err.message);
+      console.error('[EduMind DB] MySQL error, routing to dedicated fallback:', err.message);
     }
   }
 
-  // Resilient JSON-based execution engine
-  const store = readFallback();
   const lowerSql = sql.trim().toLowerCase();
 
-  // USERS & AUTHENTICATION
+  // =========================================================================
+  // 1. USERS & CANDIDATE AUTHENTICATION (Shared Universal Identity)
+  // =========================================================================
   if (lowerSql.startsWith('select * from users')) {
-    let list = [...(store.users || [])];
+    const landingStore = readLandingStore();
+    let list = [...(landingStore.users || [])];
     if (lowerSql.includes('where email =')) {
       const email = (params[0] || '').trim().toLowerCase();
       const found = list.find(u => u.email.toLowerCase() === email);
@@ -334,42 +442,72 @@ export async function query(sql, params = []) {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
-    if (!store.users) store.users = [];
-    store.users.push(userRecord);
-    writeFallback(store);
+
+    // Save into Landing DB and sync to Exam Prep DB
+    const landingStore = readLandingStore();
+    if (!landingStore.users) landingStore.users = [];
+    landingStore.users.push(userRecord);
+    writeLandingStore(landingStore);
+
+    const examPrepStore = readExamPrepStore();
+    if (!examPrepStore.users) examPrepStore.users = [];
+    examPrepStore.users.push(userRecord);
+    writeExamPrepStore(examPrepStore);
+
     return { affectedRows: 1, insertId: id };
   }
   if (lowerSql.startsWith('update users set name = ?, candidate_id = ?, target_exam = ? where id = ?')) {
     const [name, candidate_id, target_exam, id] = params;
-    const user = (store.users || []).find(u => u.id === id);
+    const landingStore = readLandingStore();
+    const user = (landingStore.users || []).find(u => u.id === id);
     if (user) {
       if (name) user.name = name.trim();
       if (candidate_id) user.candidate_id = candidate_id.trim();
       if (target_exam) user.target_exam = target_exam.trim();
       user.updated_at = new Date().toISOString();
-      writeFallback(store);
+      writeLandingStore(landingStore);
+
+      const examPrepStore = readExamPrepStore();
+      const epUser = (examPrepStore.users || []).find(u => u.id === id);
+      if (epUser) {
+        if (name) epUser.name = name.trim();
+        if (candidate_id) epUser.candidate_id = candidate_id.trim();
+        if (target_exam) epUser.target_exam = target_exam.trim();
+        epUser.updated_at = new Date().toISOString();
+        writeExamPrepStore(examPrepStore);
+      }
       return { affectedRows: 1 };
     }
     return { affectedRows: 0 };
   }
   if (lowerSql.startsWith('delete from users where id =')) {
     const id = params[0];
-    store.users = (store.users || []).filter(u => u.id !== id);
-    if (store.exam_attempts) {
-      store.exam_attempts = store.exam_attempts.filter(a => a.user_id !== id);
+    const landingStore = readLandingStore();
+    landingStore.users = (landingStore.users || []).filter(u => u.id !== id);
+    if (landingStore.exam_attempts) {
+      landingStore.exam_attempts = landingStore.exam_attempts.filter(a => a.user_id !== id);
     }
-    writeFallback(store);
+    writeLandingStore(landingStore);
+
+    const examPrepStore = readExamPrepStore();
+    examPrepStore.users = (examPrepStore.users || []).filter(u => u.id !== id);
+    if (examPrepStore.exam_attempts) {
+      examPrepStore.exam_attempts = examPrepStore.exam_attempts.filter(a => a.user_id !== id);
+    }
+    writeExamPrepStore(examPrepStore);
+
     return { affectedRows: 1 };
   }
   if (lowerSql.includes('update users set otp_code = ?, otp_expires_at = ? where email = ?')) {
     const [otp_code, otp_expires_at, email] = params;
     const cleanEmail = (email || '').trim().toLowerCase();
-    const user = (store.users || []).find(u => u.email.toLowerCase() === cleanEmail);
+    const landingStore = readLandingStore();
+    const user = (landingStore.users || []).find(u => u.email.toLowerCase() === cleanEmail);
     if (user) {
       user.otp_code = otp_code;
       user.otp_expires_at = otp_expires_at;
       user.updated_at = new Date().toISOString();
-      writeFallback(store);
+      writeLandingStore(landingStore);
       return { affectedRows: 1 };
     }
     return { affectedRows: 0 };
@@ -377,20 +515,34 @@ export async function query(sql, params = []) {
   if (lowerSql.includes('update users set password_hash = ?, otp_code = null, otp_expires_at = null where email = ?')) {
     const [password_hash, email] = params;
     const cleanEmail = (email || '').trim().toLowerCase();
-    const user = (store.users || []).find(u => u.email.toLowerCase() === cleanEmail);
+    const landingStore = readLandingStore();
+    const user = (landingStore.users || []).find(u => u.email.toLowerCase() === cleanEmail);
     if (user) {
       user.password_hash = password_hash;
       user.otp_code = null;
       user.otp_expires_at = null;
       user.updated_at = new Date().toISOString();
-      writeFallback(store);
+      writeLandingStore(landingStore);
+
+      const examPrepStore = readExamPrepStore();
+      const epUser = (examPrepStore.users || []).find(u => u.email.toLowerCase() === cleanEmail);
+      if (epUser) {
+        epUser.password_hash = password_hash;
+        epUser.otp_code = null;
+        epUser.otp_expires_at = null;
+        epUser.updated_at = new Date().toISOString();
+        writeExamPrepStore(examPrepStore);
+      }
       return { affectedRows: 1 };
     }
     return { affectedRows: 0 };
   }
 
-  // WORKSPACES (Supports User ID Isolation)
+  // =========================================================================
+  // 2. LANDING PAGE & STUDIO WORKSPACES (Dedicated to landing_studio_db.json)
+  // =========================================================================
   if (lowerSql.startsWith('select * from workspaces')) {
+    const store = readLandingStore();
     let list = store.workspaces || [];
     if (lowerSql.includes('user_id =') || lowerSql.includes('user_id is null')) {
       const p = params[0];
@@ -403,6 +555,7 @@ export async function query(sql, params = []) {
     return list;
   }
   if (lowerSql.startsWith('insert into workspaces')) {
+    const store = readLandingStore();
     let ws;
     if (params.length >= 6) {
       const [id, name, description, color, icon, user_id] = params;
@@ -429,34 +582,40 @@ export async function query(sql, params = []) {
         updated_at: new Date().toISOString()
       };
     }
+    if (!store.workspaces) store.workspaces = [];
     store.workspaces.push(ws);
-    writeFallback(store);
+    writeLandingStore(store);
     return { affectedRows: 1, insertId: ws.id };
   }
   if (lowerSql.startsWith('update workspaces set name = ? where id = ?')) {
+    const store = readLandingStore();
     const [name, id] = params;
-    const found = store.workspaces.find(w => w.id === id);
+    const found = (store.workspaces || []).find(w => w.id === id);
     if (found) {
       found.name = name;
       found.updated_at = new Date().toISOString();
-      writeFallback(store);
+      writeLandingStore(store);
       return { affectedRows: 1 };
     }
     return { affectedRows: 0 };
   }
   if (lowerSql.startsWith('delete from workspaces where id =')) {
+    const store = readLandingStore();
     const id = params[0];
-    store.workspaces = store.workspaces.filter(w => w.id !== id);
-    store.sources = store.sources.filter(s => s.workspace_id !== id);
-    store.quizzes = store.quizzes.filter(q => q.workspace_id !== id);
-    store.exam_attempts = store.exam_attempts.filter(a => a.workspace_id !== id);
-    store.chat_messages = store.chat_messages.filter(c => c.workspace_id !== id);
-    writeFallback(store);
+    store.workspaces = (store.workspaces || []).filter(w => w.id !== id);
+    store.sources = (store.sources || []).filter(s => s.workspace_id !== id);
+    store.quizzes = (store.quizzes || []).filter(q => q.workspace_id !== id);
+    store.exam_attempts = (store.exam_attempts || []).filter(a => a.workspace_id !== id);
+    store.chat_messages = (store.chat_messages || []).filter(c => c.workspace_id !== id);
+    writeLandingStore(store);
     return { affectedRows: 1 };
   }
 
-  // SOURCES (Supports User ID Isolation - Does not show after logout)
+  // =========================================================================
+  // 3. LANDING PAGE & STUDIO SOURCES (Dedicated to landing_studio_db.json)
+  // =========================================================================
   if (lowerSql.startsWith('select * from sources')) {
+    const store = readLandingStore();
     let list = store.sources || [];
     if (lowerSql.includes('workspace_id =')) {
       const wsId = params[0];
@@ -479,6 +638,7 @@ export async function query(sql, params = []) {
     return list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }
   if (lowerSql.startsWith('insert into sources')) {
+    const store = readLandingStore();
     let record;
     if (params.length >= 11) {
       const [id, workspace_id, user_id, original_name, filename, file_path, file_size, mime_type, file_type, is_note, note_content] = params;
@@ -515,20 +675,25 @@ export async function query(sql, params = []) {
         created_at: new Date().toISOString()
       };
     }
+    if (!store.sources) store.sources = [];
     store.sources.unshift(record);
-    writeFallback(store);
+    writeLandingStore(store);
     return { affectedRows: 1, insertId: record.id };
   }
   if (lowerSql.startsWith('delete from sources where id =')) {
+    const store = readLandingStore();
     const id = params[0];
-    const prevLen = store.sources.length;
-    store.sources = store.sources.filter(s => s.id !== id);
-    writeFallback(store);
+    const prevLen = (store.sources || []).length;
+    store.sources = (store.sources || []).filter(s => s.id !== id);
+    writeLandingStore(store);
     return { affectedRows: prevLen - store.sources.length };
   }
 
-  // QUIZZES (Supports User ID Isolation)
+  // =========================================================================
+  // 4. LANDING PAGE & STUDIO QUIZZES (Dedicated to landing_studio_db.json)
+  // =========================================================================
   if (lowerSql.startsWith('insert into quizzes')) {
+    const store = readLandingStore();
     let qRecord;
     if (params.length >= 8) {
       const [id, workspace_id, user_id, title, difficulty, total_questions, questions_json, source_files_json] = params;
@@ -559,18 +724,49 @@ export async function query(sql, params = []) {
     }
     if (!store.quizzes) store.quizzes = [];
     store.quizzes.unshift(qRecord);
-    writeFallback(store);
+    writeLandingStore(store);
     return { affectedRows: 1, insertId: qRecord.id };
   }
 
-  // EXAM ATTEMPTS (HISTORY) - Supports Candidate ID & User ID
+  // =========================================================================
+  // 5. EXAM ATTEMPTS (Strict Separation: Studio DB vs Exam Prep DB)
+  // =========================================================================
   if (lowerSql.startsWith('select * from exam_attempts where id =')) {
     const id = params[0];
-    const found = (store.exam_attempts || []).find(a => a.id === id);
-    return found ? [found] : [];
+    // Check Landing DB first, then Exam Prep DB
+    const landingStore = readLandingStore();
+    const foundLanding = (landingStore.exam_attempts || []).find(a => a.id === id);
+    if (foundLanding) return [foundLanding];
+
+    const examPrepStore = readExamPrepStore();
+    const foundPrep = (examPrepStore.exam_attempts || []).find(a => a.id === id);
+    return foundPrep ? [foundPrep] : [];
   }
+
   if (lowerSql.startsWith('select * from exam_attempts')) {
-    let list = [...(store.exam_attempts || [])];
+    const isPrepQuery =
+      lowerSql.includes("category = 'examprep'") ||
+      lowerSql.includes("workspace_id = 'ws_gate_prep'") ||
+      (params.includes('examprep') || params.includes('ws_gate_prep'));
+
+    const isStudioQuery =
+      lowerSql.includes("category = 'studio'") ||
+      (lowerSql.includes('workspace_id =') && !isPrepQuery);
+
+    let list = [];
+
+    if (isPrepQuery) {
+      const examPrepStore = readExamPrepStore();
+      list = [...(examPrepStore.exam_attempts || [])];
+    } else if (isStudioQuery) {
+      const landingStore = readLandingStore();
+      list = [...(landingStore.exam_attempts || [])];
+    } else {
+      // Generic query: aggregate attempts from both dedicated databases
+      const landingStore = readLandingStore();
+      const examPrepStore = readExamPrepStore();
+      list = [...(landingStore.exam_attempts || []), ...(examPrepStore.exam_attempts || [])];
+    }
 
     // Filter by candidate_id or user_id if provided
     if (lowerSql.includes('user_id =') || lowerSql.includes('candidate_id =')) {
@@ -582,7 +778,9 @@ export async function query(sql, params = []) {
       );
     } else if (lowerSql.includes('workspace_id =')) {
       const wsId = params[0];
-      list = list.filter(a => a.workspace_id === wsId);
+      if (wsId) {
+        list = list.filter(a => a.workspace_id === wsId);
+      }
       if (lowerSql.includes('user_id is null')) {
         list = list.filter(a => !a.user_id && !a.candidate_id);
       }
@@ -590,8 +788,11 @@ export async function query(sql, params = []) {
 
     return list.sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at));
   }
+
   if (lowerSql.startsWith('insert into exam_attempts')) {
     let attempt;
+    let isPrep = false;
+
     if (params.length >= 19) {
       const [
         id, workspace_id, user_id, candidate_id, user_email, user_name,
@@ -601,10 +802,12 @@ export async function query(sql, params = []) {
         quiz_json, user_answers_json, question_times_json, category
       ] = params;
 
+      isPrep = category === 'examprep' || workspace_id === 'ws_gate_prep';
+
       attempt = {
         id,
-        workspace_id: workspace_id || 'ws_default',
-        category: category || (workspace_id === 'ws_gate_prep' ? 'examprep' : 'studio'),
+        workspace_id: workspace_id || (isPrep ? 'ws_gate_prep' : 'ws_default'),
+        category: isPrep ? 'examprep' : 'studio',
         user_id: user_id || null,
         candidate_id: candidate_id || null,
         user_email: user_email || null,
@@ -632,9 +835,12 @@ export async function query(sql, params = []) {
         quiz_json, user_answers_json, question_times_json
       ] = params;
 
+      isPrep = workspace_id === 'ws_gate_prep';
+
       attempt = {
         id,
         workspace_id: workspace_id || 'ws_default',
+        category: isPrep ? 'examprep' : 'studio',
         user_id: null,
         candidate_id: null,
         user_email: null,
@@ -656,21 +862,45 @@ export async function query(sql, params = []) {
       };
     }
 
-    if (!store.exam_attempts) store.exam_attempts = [];
-    store.exam_attempts.unshift(attempt);
-    writeFallback(store);
+    if (isPrep) {
+      // Save strictly into Exam Prep Database
+      const examPrepStore = readExamPrepStore();
+      if (!examPrepStore.exam_attempts) examPrepStore.exam_attempts = [];
+      examPrepStore.exam_attempts.unshift(attempt);
+      writeExamPrepStore(examPrepStore);
+    } else {
+      // Save strictly into Landing Studio Database
+      const landingStore = readLandingStore();
+      if (!landingStore.exam_attempts) landingStore.exam_attempts = [];
+      landingStore.exam_attempts.unshift(attempt);
+      writeLandingStore(landingStore);
+    }
+
     return { affectedRows: 1, insertId: attempt.id };
   }
+
   if (lowerSql.startsWith('delete from exam_attempts where id =')) {
     const id = params[0];
-    store.exam_attempts = (store.exam_attempts || []).filter(a => a.id !== id);
-    writeFallback(store);
+    const landingStore = readLandingStore();
+    const examPrepStore = readExamPrepStore();
+
+    landingStore.exam_attempts = (landingStore.exam_attempts || []).filter(a => a.id !== id);
+    writeLandingStore(landingStore);
+
+    examPrepStore.exam_attempts = (examPrepStore.exam_attempts || []).filter(a => a.id !== id);
+    writeExamPrepStore(examPrepStore);
+
     return { affectedRows: 1 };
   }
 
-  // CHAT MESSAGES (Supports User ID Isolation)
+  // =========================================================================
+  // 6. CHAT MESSAGES (Separated: Landing Studio vs Exam Prep AI Tutor)
+  // =========================================================================
   if (lowerSql.startsWith('select * from chat_messages where workspace_id =')) {
     const wsId = params[0];
+    const isPrepChat = wsId === 'ws_gate_prep';
+    const store = isPrepChat ? readExamPrepStore() : readLandingStore();
+
     let list = (store.chat_messages || []).filter(c => c.workspace_id === wsId);
     if (lowerSql.includes('user_id =')) {
       const userId = params[1];
@@ -684,6 +914,7 @@ export async function query(sql, params = []) {
     }
     return list.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
   }
+
   if (lowerSql.startsWith('insert into chat_messages')) {
     let msg;
     if (params.length >= 5) {
@@ -707,13 +938,26 @@ export async function query(sql, params = []) {
         created_at: new Date().toISOString()
       };
     }
+
+    const isPrepChat = msg.workspace_id === 'ws_gate_prep';
+    const store = isPrepChat ? readExamPrepStore() : readLandingStore();
     if (!store.chat_messages) store.chat_messages = [];
     store.chat_messages.push(msg);
-    writeFallback(store);
+
+    if (isPrepChat) {
+      writeExamPrepStore(store);
+    } else {
+      writeLandingStore(store);
+    }
+
     return { affectedRows: 1, insertId: msg.id };
   }
+
   if (lowerSql.startsWith('delete from chat_messages where workspace_id =')) {
     const wsId = params[0];
+    const isPrepChat = wsId === 'ws_gate_prep';
+    const store = isPrepChat ? readExamPrepStore() : readLandingStore();
+
     if (lowerSql.includes('user_id =')) {
       const userId = params[1];
       store.chat_messages = (store.chat_messages || []).filter(c => !(c.workspace_id === wsId && c.user_id === userId));
@@ -722,12 +966,21 @@ export async function query(sql, params = []) {
     } else {
       store.chat_messages = (store.chat_messages || []).filter(c => c.workspace_id !== wsId);
     }
-    writeFallback(store);
+
+    if (isPrepChat) {
+      writeExamPrepStore(store);
+    } else {
+      writeLandingStore(store);
+    }
+
     return { affectedRows: 1 };
   }
 
-  // EXAM PREP QUESTION BANK (Dedicated Database for Exam Prep / GATE CS/IT)
+  // =========================================================================
+  // 7. EXAM PREP QUESTION BANK (Dedicated to exam_prep_db.json)
+  // =========================================================================
   if (lowerSql.startsWith('select * from exam_prep_questions')) {
+    const store = readExamPrepStore();
     let list = [...(store.exam_prep_questions || [])];
     if (lowerSql.includes('where id =')) {
       const qId = params[0];
@@ -746,7 +999,9 @@ export async function query(sql, params = []) {
     }
     return list;
   }
+
   if (lowerSql.startsWith('insert into exam_prep_questions')) {
+    const store = readExamPrepStore();
     const [
       id, exam_id, subject_id, subject_name, topic, difficulty,
       question_text, option_a, option_b, option_c, option_d,
@@ -771,23 +1026,26 @@ export async function query(sql, params = []) {
     };
 
     if (!store.exam_prep_questions) store.exam_prep_questions = [];
-    // If exists, replace; otherwise push
     const idx = store.exam_prep_questions.findIndex(q => q.id === id);
     if (idx >= 0) {
       store.exam_prep_questions[idx] = record;
     } else {
       store.exam_prep_questions.push(record);
     }
-    writeFallback(store);
+    writeExamPrepStore(store);
     return { affectedRows: 1, insertId: id };
   }
+
   if (lowerSql.startsWith('delete from exam_prep_questions where id =')) {
+    const store = readExamPrepStore();
     const id = params[0];
     store.exam_prep_questions = (store.exam_prep_questions || []).filter(q => q.id !== id);
-    writeFallback(store);
+    writeExamPrepStore(store);
     return { affectedRows: 1 };
   }
+
   if (lowerSql.startsWith('update exam_prep_questions set')) {
+    const store = readExamPrepStore();
     const [
       subject_id, subject_name, topic, difficulty,
       question_text, option_a, option_b, option_c, option_d,
@@ -807,14 +1065,17 @@ export async function query(sql, params = []) {
       if (correct_answer) q.correct_answer = correct_answer;
       if (explanation !== undefined) q.explanation = explanation;
       q.updated_at = new Date().toISOString();
-      writeFallback(store);
+      writeExamPrepStore(store);
       return { affectedRows: 1 };
     }
     return { affectedRows: 0 };
   }
 
-  // EXAM PREP TESTS (Generated CBT Assessments)
+  // =========================================================================
+  // 8. EXAM PREP TESTS (Dedicated to exam_prep_db.json)
+  // =========================================================================
   if (lowerSql.startsWith('select * from exam_prep_tests')) {
+    const store = readExamPrepStore();
     let list = [...(store.exam_prep_tests || [])];
     if (lowerSql.includes('where id =')) {
       const tId = params[0];
@@ -826,7 +1087,9 @@ export async function query(sql, params = []) {
     }
     return list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }
+
   if (lowerSql.startsWith('insert into exam_prep_tests')) {
+    const store = readExamPrepStore();
     const [id, exam_id, title, subject_ids, difficulty, total_questions, time_limit_minutes, questions_json] = params;
     const testRecord = {
       id,
@@ -841,13 +1104,15 @@ export async function query(sql, params = []) {
     };
     if (!store.exam_prep_tests) store.exam_prep_tests = [];
     store.exam_prep_tests.unshift(testRecord);
-    writeFallback(store);
+    writeExamPrepStore(store);
     return { affectedRows: 1, insertId: id };
   }
+
   if (lowerSql.startsWith('delete from exam_prep_tests where id =')) {
+    const store = readExamPrepStore();
     const id = params[0];
     store.exam_prep_tests = (store.exam_prep_tests || []).filter(t => t.id !== id);
-    writeFallback(store);
+    writeExamPrepStore(store);
     return { affectedRows: 1 };
   }
 
@@ -857,6 +1122,10 @@ export async function query(sql, params = []) {
 export default {
   initDB,
   query,
+  readLandingStore,
+  writeLandingStore,
+  readExamPrepStore,
+  writeExamPrepStore,
   readFallback,
   writeFallback
 };

@@ -9,16 +9,30 @@ export async function getExamHistory(req, res) {
     if (userId || candidateId) {
       // Query history for that specific logged-in ID
       const queryId = userId || candidateId;
-      history = await db.query(
-        'SELECT * FROM exam_attempts WHERE user_id = ? OR candidate_id = ? ORDER BY submitted_at DESC',
-        [queryId, candidateId || queryId]
-      );
+      if (category) {
+        history = await db.query(
+          'SELECT * FROM exam_attempts WHERE category = ? AND (user_id = ? OR candidate_id = ?) ORDER BY submitted_at DESC',
+          [category, queryId, candidateId || queryId]
+        );
+      } else {
+        history = await db.query(
+          'SELECT * FROM exam_attempts WHERE user_id = ? OR candidate_id = ? ORDER BY submitted_at DESC',
+          [queryId, candidateId || queryId]
+        );
+      }
     } else {
       // When logged out, return attempts for the workspace (guest attempts)
-      history = await db.query(
-        'SELECT * FROM exam_attempts WHERE workspace_id = ? AND user_id IS NULL AND candidate_id IS NULL ORDER BY submitted_at DESC',
-        [workspaceId]
-      );
+      if (category) {
+        history = await db.query(
+          'SELECT * FROM exam_attempts WHERE category = ? AND workspace_id = ? AND user_id IS NULL AND candidate_id IS NULL ORDER BY submitted_at DESC',
+          [category, workspaceId]
+        );
+      } else {
+        history = await db.query(
+          'SELECT * FROM exam_attempts WHERE workspace_id = ? AND user_id IS NULL AND candidate_id IS NULL ORDER BY submitted_at DESC',
+          [workspaceId]
+        );
+      }
     }
 
     // Parse JSON fields if they are strings

@@ -1,13 +1,19 @@
--- ==========================================================
--- EduMind AI — Complete Relational Database Schema
--- Multi-User Account Protection & Per-User Content Isolation
--- Compatible with MySQL 8.0+ / MariaDB
--- ==========================================================
+-- =========================================================================
+-- EduMind AI — Dual Relational Database Architecture
+-- 1. Database A: edumind_studio_db   (Landing Page, Central Studio & Workspaces)
+-- 2. Database B: edumind_examprep_db (Exam Prep Dashboard & Question Bank)
+-- Compatible with MySQL 8.0+ / MariaDB / Cloud Relational Engines
+-- =========================================================================
 
-CREATE DATABASE IF NOT EXISTS edumind_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE edumind_db;
+-- #########################################################################
+-- DATABASE 1: LANDING PAGE & CENTRAL STUDIO DATABASE (edumind_studio_db)
+-- Holds workspaces, uploaded lecture notes/files, AI quizzes, and studio chat
+-- #########################################################################
 
--- 1. USERS & CANDIDATE AUTHENTICATION
+CREATE DATABASE IF NOT EXISTS edumind_studio_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE edumind_studio_db;
+
+-- 1.1 USERS & CANDIDATE AUTHENTICATION (Landing Studio Accounts)
 CREATE TABLE IF NOT EXISTS users (
   id VARCHAR(64) PRIMARY KEY,
   name VARCHAR(150) NOT NULL,
@@ -25,7 +31,7 @@ CREATE TABLE IF NOT EXISTS users (
   INDEX idx_candidate_id (candidate_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 2. WORKSPACES
+-- 1.2 WORKSPACES (Landing Page User Study Spaces)
 CREATE TABLE IF NOT EXISTS workspaces (
   id VARCHAR(64) PRIMARY KEY,
   user_id VARCHAR(64) DEFAULT NULL,
@@ -40,7 +46,7 @@ CREATE TABLE IF NOT EXISTS workspaces (
     REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 3. SOURCES (Files & Lecture Notes - Tied to User ID)
+-- 1.3 SOURCES (Uploaded PDFs, Documents, & Notes for Studio Grounding)
 CREATE TABLE IF NOT EXISTS sources (
   id VARCHAR(64) PRIMARY KEY,
   workspace_id VARCHAR(64) NOT NULL,
@@ -63,7 +69,7 @@ CREATE TABLE IF NOT EXISTS sources (
     REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 4. QUIZZES (Generated Assessments)
+-- 1.4 STUDIO QUIZZES (Assessments generated from uploaded documents)
 CREATE TABLE IF NOT EXISTS quizzes (
   id VARCHAR(64) PRIMARY KEY,
   workspace_id VARCHAR(64) NOT NULL,
@@ -82,11 +88,11 @@ CREATE TABLE IF NOT EXISTS quizzes (
     REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 5. EXAM ATTEMPTS (Exam History Linked to Candidate & User ID — Separated by Category)
+-- 1.5 STUDIO EXAM ATTEMPTS (Attempts taken on document-based assessments)
 CREATE TABLE IF NOT EXISTS exam_attempts (
   id VARCHAR(64) PRIMARY KEY,
   workspace_id VARCHAR(64) NOT NULL,
-  category VARCHAR(50) DEFAULT 'studio', -- 'studio' or 'examprep'
+  category VARCHAR(50) DEFAULT 'studio',
   user_id VARCHAR(64) DEFAULT NULL,
   candidate_id VARCHAR(64) DEFAULT NULL,
   user_email VARCHAR(150) DEFAULT NULL,
@@ -108,13 +114,12 @@ CREATE TABLE IF NOT EXISTS exam_attempts (
   INDEX idx_workspace_attempts (workspace_id),
   INDEX idx_user_attempts (user_id),
   INDEX idx_candidate_attempts (candidate_id),
-  INDEX idx_attempt_category (category),
   INDEX idx_submitted_at (submitted_at DESC),
   CONSTRAINT fk_attempt_workspace FOREIGN KEY (workspace_id) 
     REFERENCES workspaces(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 6. CHAT MESSAGES (Workspace Conversational History Linked to User ID)
+-- 1.6 STUDIO CHAT MESSAGES (Conversational History with Workspace Grounding)
 CREATE TABLE IF NOT EXISTS chat_messages (
   id VARCHAR(64) PRIMARY KEY,
   workspace_id VARCHAR(64) NOT NULL,
@@ -129,7 +134,31 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     REFERENCES workspaces(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 7. EXAM PREP QUESTION BANK (Dedicated Database for Official Exam Prep / GATE CS/IT)
+
+-- #########################################################################
+-- DATABASE 2: EXAM PREP DASHBOARD DATABASE (edumind_examprep_db)
+-- Dedicated to Official GATE CS/IT Question Bank, Mock Tests & Performance
+-- #########################################################################
+
+CREATE DATABASE IF NOT EXISTS edumind_examprep_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE edumind_examprep_db;
+
+-- 2.1 CANDIDATE USER MIRROR (Synced Candidate Accounts for Exam Prep)
+CREATE TABLE IF NOT EXISTS users (
+  id VARCHAR(64) PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  email VARCHAR(150) NOT NULL UNIQUE,
+  password_hash TEXT,
+  candidate_id VARCHAR(50),
+  target_exam VARCHAR(100) DEFAULT 'GATE CS / IT',
+  auth_provider VARCHAR(50) DEFAULT 'local',
+  role VARCHAR(50) DEFAULT 'student',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_user_email (email),
+  INDEX idx_candidate_id (candidate_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 2.2 EXAM PREP QUESTION BANK (Categorized by Subject, Topic, Difficulty)
 CREATE TABLE IF NOT EXISTS exam_prep_questions (
   id VARCHAR(64) PRIMARY KEY,
   exam_id VARCHAR(50) DEFAULT 'gate_cs',
@@ -150,7 +179,7 @@ CREATE TABLE IF NOT EXISTS exam_prep_questions (
   INDEX idx_prep_difficulty (difficulty)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 8. EXAM PREP TESTS (Generated Assessments & Mock Runs from Database Bank)
+-- 2.3 EXAM PREP TESTS (Generated Mock Test Papers & Official Simulations)
 CREATE TABLE IF NOT EXISTS exam_prep_tests (
   id VARCHAR(64) PRIMARY KEY,
   exam_id VARCHAR(50) DEFAULT 'gate_cs',
@@ -162,4 +191,44 @@ CREATE TABLE IF NOT EXISTS exam_prep_tests (
   questions_json LONGTEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_test_exam (exam_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 2.4 EXAM PREP ATTEMPTS (Dedicated Official Mock Test Scores & Attempt Records)
+CREATE TABLE IF NOT EXISTS exam_attempts (
+  id VARCHAR(64) PRIMARY KEY,
+  workspace_id VARCHAR(64) DEFAULT 'ws_gate_prep',
+  category VARCHAR(50) DEFAULT 'examprep',
+  user_id VARCHAR(64) DEFAULT NULL,
+  candidate_id VARCHAR(64) DEFAULT NULL,
+  user_email VARCHAR(150) DEFAULT NULL,
+  user_name VARCHAR(150) DEFAULT NULL,
+  quiz_id VARCHAR(64),
+  quiz_title VARCHAR(255) NOT NULL,
+  difficulty VARCHAR(50) NOT NULL,
+  total_questions INT NOT NULL,
+  attempted_count INT NOT NULL,
+  correct_count INT NOT NULL,
+  incorrect_count INT NOT NULL,
+  accuracy_percentage INT NOT NULL,
+  overall_percentage INT NOT NULL,
+  time_taken_seconds INT NOT NULL,
+  quiz_json LONGTEXT NOT NULL,
+  user_answers_json LONGTEXT NOT NULL,
+  question_times_json LONGTEXT NOT NULL,
+  submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_user_attempts (user_id),
+  INDEX idx_candidate_attempts (candidate_id),
+  INDEX idx_submitted_at (submitted_at DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 2.5 EXAM PREP AI TUTOR CHAT (Conversations with GATE Concept Tutor)
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id VARCHAR(64) PRIMARY KEY,
+  workspace_id VARCHAR(64) DEFAULT 'ws_gate_prep',
+  user_id VARCHAR(64) DEFAULT NULL,
+  sender VARCHAR(20) NOT NULL,
+  message LONGTEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_user_chat (user_id),
+  INDEX idx_chat_created (created_at ASC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
