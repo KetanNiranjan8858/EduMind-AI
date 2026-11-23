@@ -38,6 +38,8 @@ export default function AdminQuestionManager({ onSwitchToMockTests }) {
   const [selectedSubjectId, setSelectedSubjectId] = useState('all');
   const [selectedTopic, setSelectedTopic] = useState('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState('all');
+  const [selectedQuestionType, setSelectedQuestionType] = useState('all');
+  const [selectedNegativeMarking, setSelectedNegativeMarking] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const limit = 25;
@@ -64,7 +66,15 @@ export default function AdminQuestionManager({ onSwitchToMockTests }) {
 
   useEffect(() => {
     loadQuestions();
-  }, [selectedExamId, selectedSubjectId, selectedTopic, selectedDifficulty, page]);
+  }, [
+    selectedExamId,
+    selectedSubjectId,
+    selectedTopic,
+    selectedDifficulty,
+    selectedQuestionType,
+    selectedNegativeMarking,
+    page
+  ]);
 
   async function loadTopics() {
     try {
@@ -83,6 +93,8 @@ export default function AdminQuestionManager({ onSwitchToMockTests }) {
         subjectId: selectedSubjectId !== 'all' ? selectedSubjectId : undefined,
         topic: selectedTopic !== 'all' ? selectedTopic : undefined,
         difficulty: selectedDifficulty !== 'all' ? selectedDifficulty : undefined,
+        questionType: selectedQuestionType !== 'all' ? selectedQuestionType : undefined,
+        negativeMarking: selectedNegativeMarking !== 'all' ? selectedNegativeMarking : undefined,
         search: searchQuery.trim() || undefined,
         page,
         limit
@@ -106,6 +118,8 @@ export default function AdminQuestionManager({ onSwitchToMockTests }) {
     setSelectedSubjectId('all');
     setSelectedTopic('all');
     setSelectedDifficulty('all');
+    setSelectedQuestionType('all');
+    setSelectedNegativeMarking('all');
     setSearchQuery('');
     setPage(1);
   }
@@ -136,7 +150,8 @@ export default function AdminQuestionManager({ onSwitchToMockTests }) {
         options: q.options || {},
         correctAnswer: q.correctAnswer || 'A',
         subject: q.subjectName || q.subjectId,
-        topic: q.topic || ''
+        topic: q.topic || '',
+        questionType: q.questionType || 'MCQ'
       });
       if (res.explanation) {
         setInlineExplanationText(res.explanation);
@@ -258,8 +273,46 @@ export default function AdminQuestionManager({ onSwitchToMockTests }) {
               <option value="Hard">Hard</option>
             </select>
 
+            {/* Question Type Filter: MCQ, MSQ, NAT */}
+            <select
+              value={selectedQuestionType}
+              onChange={(e) => {
+                setSelectedQuestionType(e.target.value);
+                setPage(1);
+              }}
+              className="bg-[#FAF7F2] border border-[#E6DFD3] rounded-xl px-2.5 py-1.5 text-xs text-[#1C1917] font-semibold focus:outline-none focus:border-[#173F3D]"
+              title="Filter by Question Type"
+            >
+              <option value="all">All Types</option>
+              <option value="MCQ">MCQ (Single)</option>
+              <option value="MSQ">MSQ (Multi)</option>
+              <option value="NAT">NAT (Numerical)</option>
+            </select>
+
+            {/* Negative Marking Filter */}
+            <select
+              value={selectedNegativeMarking}
+              onChange={(e) => {
+                setSelectedNegativeMarking(e.target.value);
+                setPage(1);
+              }}
+              className="bg-[#FAF7F2] border border-[#E6DFD3] rounded-xl px-2.5 py-1.5 text-xs text-[#1C1917] font-semibold focus:outline-none focus:border-[#173F3D]"
+              title="Filter by Negative Marking"
+            >
+              <option value="all">All Neg Marks</option>
+              <option value="has_penalty">Has Penalty (&gt; 0)</option>
+              <option value="zero">No Penalty (0.00)</option>
+              <option value="0.33">-0.33 (1/3rd)</option>
+              <option value="0.66">-0.66 (2/3rd)</option>
+            </select>
+
             {/* Clear Filter Button */}
-            {(selectedSubjectId !== 'all' || selectedTopic !== 'all' || selectedDifficulty !== 'all' || searchQuery) && (
+            {(selectedSubjectId !== 'all' ||
+              selectedTopic !== 'all' ||
+              selectedDifficulty !== 'all' ||
+              selectedQuestionType !== 'all' ||
+              selectedNegativeMarking !== 'all' ||
+              searchQuery) && (
               <button
                 type="button"
                 onClick={handleClearFilters}
@@ -350,6 +403,17 @@ export default function AdminQuestionManager({ onSwitchToMockTests }) {
                     >
                       {q.difficulty}
                     </span>
+                    <span
+                      className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border tracking-wide ${
+                        q.questionType === 'NAT'
+                          ? 'bg-amber-50 text-amber-800 border-amber-300'
+                          : q.questionType === 'MSQ'
+                          ? 'bg-purple-50 text-purple-700 border-purple-300'
+                          : 'bg-indigo-50 text-indigo-700 border-indigo-300'
+                      }`}
+                    >
+                      {q.questionType || 'MCQ'}
+                    </span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200">
                       +{q.marks || 1} mark{Number(q.marks) > 1 ? 's' : ''}
                     </span>
@@ -396,35 +460,55 @@ export default function AdminQuestionManager({ onSwitchToMockTests }) {
                   {q.question}
                 </div>
 
-                {/* Options Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
-                  {Object.entries(q.options || {}).map(([key, val]) => {
-                    const isCorrect = key === q.correctAnswer;
-                    return (
-                      <div
-                        key={key}
-                        className={`p-2.5 rounded-xl text-xs flex items-center justify-between border transition-all ${
-                          isCorrect
-                            ? 'bg-[#E5ECEB] border-[#173F3D] text-[#173F3D] font-bold shadow-2xs'
-                            : 'bg-[#FAF7F2] border-[#E6DFD3] text-[#1C1917]'
-                        }`}
-                      >
-                        <div className="flex items-baseline gap-2 min-w-0">
-                          <span className="font-mono text-[11px] font-bold text-[#78716C] shrink-0">
-                            ({key})
-                          </span>
-                          <span className="leading-snug truncate">{val}</span>
+                {/* Options / Answer Display based on Question Type */}
+                {q.questionType === 'NAT' ? (
+                  /* NAT Numerical Answer Display */
+                  <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#E6DFD3] flex items-center justify-between text-xs pt-1">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                      <span className="font-bold text-[#1C1917]">Numerical Answer Key (NAT):</span>
+                      <span className="text-[11px] text-[#78716C]">(No multiple-choice options)</span>
+                    </div>
+                    <span className="font-mono font-bold text-sm text-[#173F3D] px-3.5 py-1 bg-white rounded-lg border border-[#E6DFD3] shadow-2xs">
+                      {q.correctAnswer}
+                    </span>
+                  </div>
+                ) : (
+                  /* Options Grid for MCQ and MSQ */
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
+                    {Object.entries(q.options || {}).map(([key, val]) => {
+                      const isMsq = q.questionType === 'MSQ';
+                      const correctList = isMsq
+                        ? (q.correctAnswer || '').split(',').map((s) => s.trim().toUpperCase())
+                        : [(q.correctAnswer || '').toUpperCase()];
+                      const isCorrect = correctList.includes(key);
+
+                      return (
+                        <div
+                          key={key}
+                          className={`p-2.5 rounded-xl text-xs flex items-center justify-between border transition-all ${
+                            isCorrect
+                              ? 'bg-[#E5ECEB] border-[#173F3D] text-[#173F3D] font-bold shadow-2xs'
+                              : 'bg-[#FAF7F2] border-[#E6DFD3] text-[#1C1917]'
+                          }`}
+                        >
+                          <div className="flex items-baseline gap-2 min-w-0">
+                            <span className="font-mono text-[11px] font-bold text-[#78716C] shrink-0">
+                              ({key})
+                            </span>
+                            <span className="leading-snug truncate">{val}</span>
+                          </div>
+                          {isCorrect && (
+                            <span className="text-[10px] font-bold text-[#173F3D] shrink-0 flex items-center gap-1 ml-2">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>{isMsq ? 'Correct (MSQ)' : 'Correct'}</span>
+                            </span>
+                          )}
                         </div>
-                        {isCorrect && (
-                          <span className="text-[10px] font-bold text-[#173F3D] shrink-0 flex items-center gap-1 ml-2">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Correct</span>
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* Explanation Section: View, Inline Edit & AI Generator */}
                 <div className="pt-2 border-t border-[#F0EBE1]">

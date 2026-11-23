@@ -388,6 +388,8 @@ export async function fetchAdminQuestions(params = {}) {
   if (params.subjectId) qs.append('subjectId', params.subjectId);
   if (params.topic) qs.append('topic', params.topic);
   if (params.difficulty) qs.append('difficulty', params.difficulty);
+  if (params.questionType) qs.append('questionType', params.questionType);
+  if (params.negativeMarking) qs.append('negativeMarking', params.negativeMarking);
   if (params.search) qs.append('search', params.search);
   if (params.page) qs.append('page', params.page);
   if (params.limit) qs.append('limit', params.limit);

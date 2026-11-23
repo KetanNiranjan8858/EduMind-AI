@@ -371,32 +371,40 @@ export async function generateQuestionExplanation({
   options = {},
   correctAnswer = 'A',
   subject = '',
-  topic = ''
+  topic = '',
+  questionType = 'MCQ'
 }) {
   const ai = getAIClient();
-  const formattedOptions = Object.entries(options || {})
-    .map(([k, v]) => `(${k}) ${v}`)
-    .join('\n');
+  const isNAT = questionType?.toUpperCase() === 'NAT';
+  const isMSQ = questionType?.toUpperCase() === 'MSQ';
+  const typeLabel = isNAT ? 'Numerical Answer Type (NAT)' : isMSQ ? 'Multiple Select Question (MSQ)' : 'Multiple Choice Question (MCQ)';
+
+  const formattedOptions = !isNAT && options && Object.keys(options).length > 0
+    ? Object.entries(options)
+        .filter(([_, v]) => v && v.trim())
+        .map(([k, v]) => `(${k}) ${v}`)
+        .join('\n')
+    : '(Numerical Answer Type - No Options)';
 
   if (!ai) {
     return {
-      explanation: `Option (${correctAnswer}) is correct.\n1. Principle: Tests fundamental concepts of ${topic || subject || 'the syllabus'}.\n2. Derivation: Evaluating constraints confirms Option (${correctAnswer}) is accurate.\n3. Analysis: Alternate options violate required invariants.\n4. Conclusion: Option (${correctAnswer}) is verified correct.`
+      explanation: isNAT
+        ? `Correct Numerical Answer: ${correctAnswer}\n1. Principle: Solves core principles of ${topic || subject || 'the syllabus'}.\n2. Calculation: Applying equations yields the exact numerical value of ${correctAnswer}.\n3. Tolerance: Ensure units and precision align with problem constraints.\n4. Conclusion: Verified answer is ${correctAnswer}.`
+        : `Option(s) (${correctAnswer}) are correct.\n1. Principle: Tests fundamental concepts of ${topic || subject || 'the syllabus'}.\n2. Derivation: Evaluating constraints confirms Option (${correctAnswer}) is accurate.\n3. Analysis: Alternate options violate required invariants.\n4. Conclusion: Option (${correctAnswer}) is verified correct.`
     };
   }
 
   try {
     const prompt = `You are an elite professor and expert GATE examination instructor.
-Generate a high-yield, compact, step-by-step solution and explanation for the following multiple-choice question.
+Generate a high-yield, compact, step-by-step solution and explanation for the following ${typeLabel}.
 
 Subject: ${subject || 'Computer Science & Information Technology'}
 Topic: ${topic || 'General'}
+Question Type: ${typeLabel}
 Question:
 ${questionText}
 
-Options:
-${formattedOptions}
-
-Correct Answer: Option (${correctAnswer})
+${isNAT ? `Expected Numerical Answer: ${correctAnswer}` : `Options:\n${formattedOptions}\n\nCorrect Answer: Option(s) (${correctAnswer})`}
 
 CRITICAL MANDATORY INSTRUCTIONS:
 1. STRICT LENGTH CONSTRAINT: The entire explanation MUST BE BETWEEN 5 AND 10 LINES ONLY (10 lines maximum).
@@ -404,8 +412,8 @@ CRITICAL MANDATORY INSTRUCTIONS:
 3. Be direct, precise, and high-yield.
 4. Structure (strictly 5 to 10 lines total):
    - Line 1: State the core formula, definition, or theorem.
-   - Lines 2-6: Step-by-step calculation or logical derivation showing why Option (${correctAnswer}) is correct.
-   - Lines 7-8: Brief 1-sentence note stating why distractors are incorrect.
+   - Lines 2-6: Step-by-step calculation or logical derivation showing why ${isNAT ? `the numerical answer ${correctAnswer}` : `Option (${correctAnswer})`} is correct.
+   - Lines 7-8: Brief note on ${isNAT ? 'key boundary conditions or units' : 'why distractors are incorrect'}.
    - Final line: Concluding answer verification.
 5. NO greetings, NO filler, and NO introductory phrases (e.g. NEVER say "Sure", "Here is the explanation"). Start directly with Line 1.`;
 

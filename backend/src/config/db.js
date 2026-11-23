@@ -1046,7 +1046,34 @@ export async function query(sql, params = []) {
 
   if (lowerSql.startsWith('update exam_prep_questions set')) {
     const store = readExamPrepStore();
-    if (lowerSql.includes('marks =') && lowerSql.includes('negative_marks =')) {
+    if (lowerSql.includes('question_type =') && lowerSql.includes('marks =')) {
+      const [
+        subject_id, subject_name, topic, difficulty,
+        question_type, marks, negative_marks,
+        question_text, option_a, option_b, option_c, option_d,
+        correct_answer, explanation, id
+      ] = params;
+      const q = (store.exam_prep_questions || []).find(item => item.id === id);
+      if (q) {
+        if (subject_id) q.subject_id = subject_id;
+        if (subject_name) q.subject_name = subject_name;
+        if (topic !== undefined) q.topic = topic;
+        if (difficulty) q.difficulty = difficulty;
+        if (question_type) q.question_type = question_type.toUpperCase();
+        if (marks !== undefined) q.marks = Number(marks);
+        if (negative_marks !== undefined) q.negative_marks = Number(negative_marks);
+        if (question_text) q.question_text = question_text;
+        q.option_a = option_a || '';
+        q.option_b = option_b || '';
+        q.option_c = option_c || '';
+        q.option_d = option_d || '';
+        if (correct_answer) q.correct_answer = correct_answer;
+        if (explanation !== undefined) q.explanation = explanation;
+        q.updated_at = new Date().toISOString();
+        writeExamPrepStore(store);
+        return { affectedRows: 1 };
+      }
+    } else if (lowerSql.includes('marks =') && lowerSql.includes('negative_marks =')) {
       const [
         subject_id, subject_name, topic, difficulty,
         marks, negative_marks,

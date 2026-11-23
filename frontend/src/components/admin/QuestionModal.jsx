@@ -17,6 +17,7 @@ export default function QuestionModal({
   const [subjectId, setSubjectId] = useState('math');
   const [topic, setTopic] = useState('');
   const [difficulty, setDifficulty] = useState('Hard');
+  const [questionType, setQuestionType] = useState('MCQ'); // 'MCQ', 'MSQ', 'NAT'
   const [marks, setMarks] = useState(1);
   const [negativeMarks, setNegativeMarks] = useState(0.33);
   const [questionText, setQuestionText] = useState('');
@@ -25,6 +26,8 @@ export default function QuestionModal({
   const [optionC, setOptionC] = useState('');
   const [optionD, setOptionD] = useState('');
   const [correctAnswer, setCorrectAnswer] = useState('A');
+  const [msqAnswers, setMsqAnswers] = useState(['A']);
+  const [natAnswer, setNatAnswer] = useState('');
   const [explanation, setExplanation] = useState('');
   const [saving, setSaving] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
@@ -36,20 +39,40 @@ export default function QuestionModal({
       setSubjectId(initialQuestion.subjectId || 'math');
       setTopic(initialQuestion.topic || '');
       setDifficulty(initialQuestion.difficulty || 'Hard');
+      
+      const rawType = (
+        initialQuestion.questionType ||
+        (initialQuestion.correctAnswer?.includes(',')
+          ? 'MSQ'
+          : (!initialQuestion.options?.A && !initialQuestion.options?.B ? 'NAT' : 'MCQ'))
+      ).toUpperCase();
+      setQuestionType(rawType);
+
       setMarks(initialQuestion.marks !== undefined ? initialQuestion.marks : 1);
       setNegativeMarks(
         initialQuestion.negativeMarks !== undefined
           ? initialQuestion.negativeMarks
           : initialQuestion.negative_marks !== undefined
           ? initialQuestion.negative_marks
-          : 0.33
+          : (rawType === 'NAT' || rawType === 'MSQ' ? 0 : 0.33)
       );
+
       setQuestionText(initialQuestion.question || initialQuestion.question_text || '');
       setOptionA(initialQuestion.options?.A || initialQuestion.option_a || '');
       setOptionB(initialQuestion.options?.B || initialQuestion.option_b || '');
       setOptionC(initialQuestion.options?.C || initialQuestion.option_c || '');
       setOptionD(initialQuestion.options?.D || initialQuestion.option_d || '');
-      setCorrectAnswer(initialQuestion.correctAnswer || initialQuestion.correct_answer || 'A');
+
+      const initialAns = (initialQuestion.correctAnswer || initialQuestion.correct_answer || 'A').toString().trim();
+      if (rawType === 'NAT') {
+        setNatAnswer(initialAns);
+      } else if (rawType === 'MSQ') {
+        const parts = initialAns.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+        setMsqAnswers(parts.length > 0 ? parts : ['A']);
+      } else {
+        setCorrectAnswer(initialAns.toUpperCase() || 'A');
+      }
+
       setExplanation(initialQuestion.explanation || '');
       setErrorMsg('');
     } else {
@@ -57,6 +80,7 @@ export default function QuestionModal({
       setSubjectId('math');
       setTopic('');
       setDifficulty('Hard');
+      setQuestionType('MCQ');
       setMarks(1);
       setNegativeMarks(0.33);
       setQuestionText('');
@@ -65,10 +89,32 @@ export default function QuestionModal({
       setOptionC('');
       setOptionD('');
       setCorrectAnswer('A');
+      setMsqAnswers(['A']);
+      setNatAnswer('');
       setExplanation('');
       setErrorMsg('');
     }
   }, [initialQuestion, isOpen]);
+
+  function handleTypeSwitch(newType) {
+    setQuestionType(newType);
+    if (newType === 'NAT' || newType === 'MSQ') {
+      setNegativeMarks(0);
+    } else {
+      setNegativeMarks(Number(marks) === 2 ? 0.66 : 0.33);
+    }
+  }
+
+  function toggleMsqOption(optKey) {
+    setMsqAnswers((prev) => {
+      if (prev.includes(optKey)) {
+        if (prev.length === 1) return prev; // Keep at least one
+        return prev.filter((k) => k !== optKey);
+      } else {
+        return [...prev, optKey].sort();
+      }
+    });
+  }
 
   if (!isOpen) return null;
 
@@ -81,17 +127,25 @@ export default function QuestionModal({
     setErrorMsg('');
     try {
       const selectedSubjectObj = subjectsList.find((s) => s.id === subjectId);
+      const effectiveAnswer =
+        questionType === 'NAT'
+          ? natAnswer.trim()
+          : questionType === 'MSQ'
+          ? msqAnswers.join(',')
+          : correctAnswer;
+
       const res = await generateAdminExplanation({
         questionText: questionText.trim(),
-        options: {
+        options: questionType === 'NAT' ? {} : {
           A: optionA.trim(),
           B: optionB.trim(),
           C: optionC.trim(),
           D: optionD.trim()
         },
-        correctAnswer: correctAnswer.toUpperCase(),
+        correctAnswer: effectiveAnswer,
         subject: selectedSubjectObj?.name || subjectId,
-        topic: topic.trim() || selectedSubjectObj?.name
+        topic: topic.trim() || selectedSubjectObj?.name,
+        questionType
       });
       if (res.explanation) {
         setExplanation(res.explanation);
@@ -111,10 +165,23 @@ export default function QuestionModal({
       setErrorMsg('Question text is required.');
       return;
     }
-    if (!optionA.trim() || !optionB.trim() || !optionC.trim() || !optionD.trim()) {
-      setErrorMsg('All 4 multiple-choice options (A, B, C, D) are required.');
-      return;
+
+    if (questionType === 'NAT') {
+      if (!natAnswer.trim()) {
+        setErrorMsg('Numerical answer value is required for NAT questions.');
+        return;
+      }
+    } else {
+      if (!optionA.trim() || !optionB.trim() || !optionC.trim() || !optionD.trim()) {
+        setErrorMsg('All 4 multiple-choice options (A, B, C, D) are required.');
+        return;
+      }
+      if (questionType === 'MSQ' && msqAnswers.length === 0) {
+        setErrorMsg('At least one correct option must be selected for MSQ.');
+        return;
+      }
     }
+
     if (!explanation.trim()) {
       setErrorMsg('Detailed solution and derivation explanation is required.');
       return;
@@ -123,20 +190,28 @@ export default function QuestionModal({
     setSaving(true);
     try {
       const selectedSubjectObj = subjectsList.find((s) => s.id === subjectId);
+      const finalAns =
+        questionType === 'NAT'
+          ? natAnswer.trim()
+          : questionType === 'MSQ'
+          ? msqAnswers.sort().join(',')
+          : correctAnswer.toUpperCase();
+
       const payload = {
         examId,
         subjectId,
         subjectName: selectedSubjectObj?.name || subjectId,
         topic: topic.trim() || selectedSubjectObj?.name || 'General',
         difficulty,
+        questionType,
         marks: Number(marks) || 1,
         negativeMarks: Number(negativeMarks) >= 0 ? Number(negativeMarks) : 0,
         questionText: questionText.trim(),
-        optionA: optionA.trim(),
-        optionB: optionB.trim(),
-        optionC: optionC.trim(),
-        optionD: optionD.trim(),
-        correctAnswer: correctAnswer.toUpperCase(),
+        optionA: questionType === 'NAT' ? '' : optionA.trim(),
+        optionB: questionType === 'NAT' ? '' : optionB.trim(),
+        optionC: questionType === 'NAT' ? '' : optionC.trim(),
+        optionD: questionType === 'NAT' ? '' : optionD.trim(),
+        correctAnswer: finalAns,
         explanation: explanation.trim()
       };
 
@@ -186,6 +261,45 @@ export default function QuestionModal({
               <span>{errorMsg}</span>
             </div>
           )}
+
+          {/* Question Type: MCQ, MSQ, NAT */}
+          <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#E6DFD3] space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-[#1C1917]">
+                Question Type & Exam Format
+              </label>
+              <span className="text-[10px] text-[#78716C]">
+                {questionType === 'MCQ'
+                  ? 'Single Choice • Standard Negative Marking'
+                  : questionType === 'MSQ'
+                  ? 'Multiple Select • 1 or More Correct • 0 Negative Marking'
+                  : 'Numerical Answer • Keypad Input • 0 Negative Marking'}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { type: 'MCQ', title: 'MCQ', desc: 'Single Choice' },
+                { type: 'MSQ', title: 'MSQ', desc: 'Multiple Select' },
+                { type: 'NAT', title: 'NAT', desc: 'Numerical Answer' }
+              ].map((item) => (
+                <button
+                  key={item.type}
+                  type="button"
+                  onClick={() => handleTypeSwitch(item.type)}
+                  className={`py-2 px-3 rounded-xl transition-all cursor-pointer border text-center flex flex-col items-center justify-center gap-0.5 ${
+                    questionType === item.type
+                      ? 'bg-[#173F3D] border-[#173F3D] text-white shadow-2xs'
+                      : 'bg-white border-[#E6DFD3] text-[#78716C] hover:text-[#1C1917]'
+                  }`}
+                >
+                  <span className="text-xs font-bold">{item.title}</span>
+                  <span className={`text-[10px] ${questionType === item.type ? 'text-[#FAF7F2]/80' : 'text-[#78716C]'}`}>
+                    {item.desc}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Row 1: Exam & Subject Selection */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -350,61 +464,96 @@ export default function QuestionModal({
             />
           </div>
 
-          {/* Multiple Choice Options A, B, C, D */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-[#1C1917]">
-                Multiple Choice Options (Select correct option)
+          {/* Options / Answer Input based on Question Type */}
+          {questionType === 'NAT' ? (
+            /* Numerical Answer Input for NAT */
+            <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#E6DFD3] space-y-2">
+              <label className="text-xs font-bold text-[#1C1917] flex items-center justify-between">
+                <span>Numerical Correct Answer Key (NAT)</span>
+                <span className="text-[10px] text-emerald-700 font-semibold">Candidates input via on-screen keypad</span>
               </label>
-              <span className="text-[11px] text-[#78716C]">
-                Click an option card to mark it as the correct answer
-              </span>
+              <input
+                type="text"
+                placeholder="e.g. 42 or 3.14 or -0.5"
+                value={natAnswer}
+                onChange={(e) => setNatAnswer(e.target.value)}
+                className="w-full bg-white border border-[#E6DFD3] rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-[#173F3D] focus:outline-none focus:border-[#173F3D]"
+                required
+              />
+              <p className="text-[11px] text-[#78716C] leading-relaxed">
+                In GATE NAT questions, no multiple-choice options are displayed. Enter the exact numerical value or decimal answer.
+              </p>
             </div>
+          ) : (
+            /* Multiple Choice Options A, B, C, D (MCQ single select or MSQ multi select) */
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-[#1C1917]">
+                  {questionType === 'MSQ'
+                    ? 'Multiple Select Options (Click all options that are correct)'
+                    : 'Multiple Choice Options (Select 1 correct option)'}
+                </label>
+                <span className="text-[11px] text-[#78716C]">
+                  {questionType === 'MSQ'
+                    ? `${msqAnswers.length} option(s) marked correct (${msqAnswers.join(', ')})`
+                    : `Option (${correctAnswer}) is marked correct`}
+                </span>
+              </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {[
-                { key: 'A', value: optionA, setter: setOptionA },
-                { key: 'B', value: optionB, setter: setOptionB },
-                { key: 'C', value: optionC, setter: setOptionC },
-                { key: 'D', value: optionD, setter: setOptionD }
-              ].map(({ key, value, setter }) => {
-                const isCorrect = correctAnswer === key;
-                return (
-                  <div
-                    key={key}
-                    onClick={() => setCorrectAnswer(key)}
-                    className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center gap-3 ${
-                      isCorrect
-                        ? 'bg-[#E5ECEB] border-[#173F3D] text-[#173F3D] shadow-2xs'
-                        : 'bg-[#FAF7F2] border-[#E6DFD3] hover:border-[#DCD2C0]'
-                    }`}
-                  >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { key: 'A', value: optionA, setter: setOptionA },
+                  { key: 'B', value: optionB, setter: setOptionB },
+                  { key: 'C', value: optionC, setter: setOptionC },
+                  { key: 'D', value: optionD, setter: setOptionD }
+                ].map(({ key, value, setter }) => {
+                  const isCorrect = questionType === 'MSQ' ? msqAnswers.includes(key) : correctAnswer === key;
+                  return (
                     <div
-                      className={`w-6 h-6 rounded-lg font-bold text-xs flex items-center justify-center shrink-0 ${
+                      key={key}
+                      onClick={() => {
+                        if (questionType === 'MSQ') {
+                          toggleMsqOption(key);
+                        } else {
+                          setCorrectAnswer(key);
+                        }
+                      }}
+                      className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center gap-3 ${
                         isCorrect
-                          ? 'bg-[#173F3D] text-white'
-                          : 'bg-[#E6DFD3] text-[#78716C]'
+                          ? 'bg-[#E5ECEB] border-[#173F3D] text-[#173F3D] shadow-2xs'
+                          : 'bg-[#FAF7F2] border-[#E6DFD3] hover:border-[#DCD2C0]'
                       }`}
                     >
-                      {key}
+                      <div
+                        className={`w-6 h-6 rounded-lg font-bold text-xs flex items-center justify-center shrink-0 ${
+                          isCorrect
+                            ? 'bg-[#173F3D] text-white'
+                            : 'bg-[#E6DFD3] text-[#78716C]'
+                        }`}
+                      >
+                        {key}
+                      </div>
+                      <input
+                        type="text"
+                        placeholder={`Option ${key} text...`}
+                        value={value}
+                        onChange={(e) => setter(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 bg-transparent border-0 text-xs text-[#1C1917] focus:outline-none font-medium"
+                        required={questionType !== 'NAT'}
+                      />
+                      {isCorrect && (
+                        <span className="text-[10px] font-bold text-[#173F3D] shrink-0 flex items-center gap-1">
+                          <CheckCircle2 className="w-4 h-4 text-[#173F3D]" />
+                          <span>{questionType === 'MSQ' ? 'Correct (MSQ)' : 'Correct'}</span>
+                        </span>
+                      )}
                     </div>
-                    <input
-                      type="text"
-                      placeholder={`Option ${key} text...`}
-                      value={value}
-                      onChange={(e) => setter(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="flex-1 bg-transparent border-0 text-xs text-[#1C1917] focus:outline-none font-medium"
-                      required
-                    />
-                    {isCorrect && (
-                      <CheckCircle2 className="w-4 h-4 text-[#173F3D] shrink-0" />
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Explanation & Solution */}
           <div>

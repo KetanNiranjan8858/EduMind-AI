@@ -262,7 +262,17 @@ export async function deleteStudent(req, res) {
  */
 export async function getAdminQuestions(req, res) {
   try {
-    const { examId = 'gate_cs', subjectId, topic, difficulty, search, page = 1, limit = 50 } = req.query;
+    const {
+      examId = 'gate_cs',
+      subjectId,
+      topic,
+      difficulty,
+      questionType,
+      negativeMarking,
+      search,
+      page = 1,
+      limit = 50
+    } = req.query;
 
     let rows = await db.query('SELECT * FROM exam_prep_questions WHERE exam_id = ?', [examId]);
 
@@ -278,6 +288,32 @@ export async function getAdminQuestions(req, res) {
       rows = rows.filter((q) => q.difficulty?.toLowerCase() === difficulty.toLowerCase());
     }
 
+    // Filter by Question Type (MCQ, MSQ, NAT)
+    if (questionType && questionType !== 'all') {
+      const targetType = questionType.toUpperCase();
+      rows = rows.filter((q) => {
+        const type = (q.question_type || (q.correct_answer?.includes(',') ? 'MSQ' : (!q.option_a && !q.option_b ? 'NAT' : 'MCQ'))).toUpperCase();
+        return type === targetType;
+      });
+    }
+
+    // Filter by Negative Marking
+    if (negativeMarking && negativeMarking !== 'all') {
+      if (negativeMarking === 'has_penalty') {
+        rows = rows.filter((q) => Number(q.negative_marks !== undefined ? q.negative_marks : 0.33) > 0);
+      } else if (negativeMarking === 'zero' || negativeMarking === 'none') {
+        rows = rows.filter((q) => Number(q.negative_marks !== undefined ? q.negative_marks : 0.33) === 0);
+      } else {
+        const targetVal = parseFloat(negativeMarking);
+        if (!isNaN(targetVal)) {
+          rows = rows.filter((q) => {
+            const val = Number(q.negative_marks !== undefined ? q.negative_marks : 0.33);
+            return Math.abs(val - targetVal) < 0.05;
+          });
+        }
+      }
+    }
+
     if (search && search.trim()) {
       const qLower = search.trim().toLowerCase();
       rows = rows.filter(
@@ -288,7 +324,8 @@ export async function getAdminQuestions(req, res) {
           q.option_c?.toLowerCase().includes(qLower) ||
           q.option_d?.toLowerCase().includes(qLower) ||
           q.explanation?.toLowerCase().includes(qLower) ||
-          q.topic?.toLowerCase().includes(qLower)
+          q.topic?.toLowerCase().includes(qLower) ||
+          q.correct_answer?.toLowerCase().includes(qLower)
       );
     }
 
@@ -298,26 +335,30 @@ export async function getAdminQuestions(req, res) {
     const startIndex = (pageNum - 1) * limitNum;
     const paginated = rows.slice(startIndex, startIndex + limitNum);
 
-    const questions = paginated.map((q) => ({
-      id: q.id,
-      examId: q.exam_id,
-      subjectId: q.subject_id,
-      subjectName: q.subject_name,
-      topic: q.topic,
-      difficulty: q.difficulty,
-      marks: q.marks !== undefined ? Number(q.marks) : (q.difficulty === 'Hard' ? 2 : 1),
-      negativeMarks: q.negative_marks !== undefined ? Number(q.negative_marks) : (Number(q.marks) === 2 || q.difficulty === 'Hard' ? 0.66 : 0.33),
-      question: q.question_text,
-      options: {
-        A: q.option_a,
-        B: q.option_b,
-        C: q.option_c,
-        D: q.option_d
-      },
-      correctAnswer: q.correct_answer,
-      explanation: q.explanation,
-      createdAt: q.created_at
-    }));
+    const questions = paginated.map((q) => {
+      const qType = (q.question_type || (q.correct_answer?.includes(',') ? 'MSQ' : (!q.option_a && !q.option_b ? 'NAT' : 'MCQ'))).toUpperCase();
+      return {
+        id: q.id,
+        examId: q.exam_id,
+        subjectId: q.subject_id,
+        subjectName: q.subject_name,
+        topic: q.topic,
+        difficulty: q.difficulty,
+        questionType: qType,
+        marks: q.marks !== undefined ? Number(q.marks) : (q.difficulty === 'Hard' ? 2 : 1),
+        negativeMarks: q.negative_marks !== undefined ? Number(q.negative_marks) : (qType === 'NAT' || qType === 'MSQ' ? 0 : (Number(q.marks) === 2 || q.difficulty === 'Hard' ? 0.66 : 0.33)),
+        question: q.question_text,
+        options: {
+          A: q.option_a,
+          B: q.option_b,
+          C: q.option_c,
+          D: q.option_d
+        },
+        correctAnswer: q.correct_answer,
+        explanation: q.explanation,
+        createdAt: q.created_at
+      };
+    });
 
     return res.json({
       success: true,
@@ -484,6 +525,7 @@ export async function updateAdminQuestion(req, res) {
       subjectName,
       topic,
       difficulty,
+      questionType,
       marks,
       negativeMarks,
       negative_marks,
@@ -498,13 +540,21 @@ export async function updateAdminQuestion(req, res) {
 
     const subMeta = GATE_SUBJECTS_METADATA.find((s) => s.id === subjectId);
     const finalSubjectName = subjectName || subMeta?.name || subjectId;
+    const finalType = (questionType || 'MCQ').toUpperCase();
     const finalMarks = marks !== undefined ? Number(marks) : 1;
-    const finalNegMarks = negativeMarks !== undefined ? Number(negativeMarks) : (negative_marks !== undefined ? Number(negative_marks) : (finalMarks === 2 ? 0.66 : 0.33));
+    const defaultNeg = (finalType === 'NAT' || finalType === 'MSQ') ? 0 : (finalMarks === 2 ? 0.66 : 0.33);
+    const finalNegMarks = negativeMarks !== undefined ? Number(negativeMarks) : (negative_marks !== undefined ? Number(negative_marks) : defaultNeg);
+
+    const finalOptA = finalType === 'NAT' ? '' : (optionA || '');
+    const finalOptB = finalType === 'NAT' ? '' : (optionB || '');
+    const finalOptC = finalType === 'NAT' ? '' : (optionC || '');
+    const finalOptD = finalType === 'NAT' ? '' : (optionD || '');
+    const finalAns = correctAnswer !== undefined && correctAnswer !== null ? correctAnswer.toString().trim() : 'A';
 
     await db.query(
       `UPDATE exam_prep_questions SET
         subject_id = ?, subject_name = ?, topic = ?, difficulty = ?,
-        marks = ?, negative_marks = ?,
+        question_type = ?, marks = ?, negative_marks = ?,
         question_text = ?, option_a = ?, option_b = ?, option_c = ?, option_d = ?,
         correct_answer = ?, explanation = ?
       WHERE id = ?`,
@@ -513,14 +563,15 @@ export async function updateAdminQuestion(req, res) {
         finalSubjectName,
         topic,
         difficulty,
+        finalType,
         finalMarks,
         finalNegMarks,
         questionText,
-        optionA,
-        optionB,
-        optionC,
-        optionD,
-        correctAnswer ? correctAnswer.toUpperCase() : 'A',
+        finalOptA,
+        finalOptB,
+        finalOptC,
+        finalOptD,
+        finalAns,
         explanation,
         id
       ]
@@ -643,7 +694,7 @@ export async function verifyAdminPasscode(req, res) {
  */
 export async function generateAdminQuestionExplanation(req, res) {
   try {
-    const { questionText, options, correctAnswer, subject, topic } = req.body;
+    const { questionText, options, correctAnswer, subject, topic, questionType } = req.body;
     if (!questionText || !questionText.trim()) {
       return res.status(400).json({ success: false, message: 'Question text is required to generate an explanation.' });
     }
@@ -651,9 +702,10 @@ export async function generateAdminQuestionExplanation(req, res) {
     const result = await generateQuestionExplanation({
       questionText: questionText.trim(),
       options: options || {},
-      correctAnswer: (correctAnswer || 'A').toUpperCase(),
+      correctAnswer: correctAnswer ? correctAnswer.toString().trim() : 'A',
       subject: subject || '',
-      topic: topic || ''
+      topic: topic || '',
+      questionType: questionType || 'MCQ'
     });
 
     return res.json({
